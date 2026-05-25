@@ -121,6 +121,10 @@ public class DataGenerator {
         System.out.printf("Generated %d events → %s/ (%d file%s of up to %d each)%n",
                 events.size(), outDir, written.size(), written.size() == 1 ? "" : "s", batchSize);
 
+        if (ingestUrl == null) {
+            System.out.println("Tip: add --ingest=http://localhost:8080 to POST these files to the API.");
+        }
+
         if (ingestUrl != null) {
             System.out.printf("Ingesting %d file%s to %s …%n",
                     written.size(), written.size() == 1 ? "" : "s", ingestUrl);
@@ -186,6 +190,7 @@ public class DataGenerator {
     static void ingestFiles(List<File> files, String baseUrl) throws Exception {
         HttpClient http = HttpClient.newHttpClient();
         String url = baseUrl + "/v1/events/ingest";
+        int ok = 0, failed = 0;
         for (File file : files) {
             String body = Files.readString(file.toPath());
             HttpRequest req = HttpRequest.newBuilder()
@@ -194,9 +199,12 @@ public class DataGenerator {
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            boolean success = res.statusCode() == 201;
             System.out.printf("  [%s] %s → %d%n",
-                    res.statusCode() == 201 ? "OK  " : "FAIL", file.getName(), res.statusCode());
+                    success ? "OK  " : "FAIL", file.getName(), res.statusCode());
+            if (success) ok++; else failed++;
         }
+        System.out.printf("Ingested: %d OK, %d FAILED%n", ok, failed);
     }
 
     // --- File index helper ---
