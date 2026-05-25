@@ -12,20 +12,21 @@ Akamai's Web Security Analytics platform.
 3. [Architecture & Technology](#architecture--technology)
 4. [Testing](#testing)
 5. [Feature Deep Dive](#feature-deep-dive)
+6. [Tool Installation](#tool-installation)
 
 ---
 
 ## Build & Run
 
 ### What you need
-- Java 21
-- Maven 3.9+
-- PostgreSQL 15+
+- [Java 21](#java-21-jdk)
+- [Maven 3.8+](#maven-38)
+- [PostgreSQL 15+](#postgresql-15)
 
 Verify:
 ```bash
 java -version    # must show 21.x
-mvn -version     # must show 3.9+
+mvn -version     # must show 3.8+
 psql --version   # must show 15+
 ```
 
@@ -366,3 +367,99 @@ All incoming fields are validated before processing:
 - Numeric fields (`requestSize`, `responseSize`) must be non-negative
 - Error responses never expose internal details, stack traces, or database errors
 - All queries use JPA parameterized statements — SQL injection is not possible
+
+---
+
+## Tool Installation
+
+### Java 21 JDK
+
+**Linux — Ubuntu / Debian:**
+```bash
+sudo apt update && sudo apt install -y openjdk-21-jdk
+```
+
+**Linux — Fedora / RHEL / CentOS Stream:**
+```bash
+sudo dnf install java-21-openjdk-devel
+```
+
+**macOS (Homebrew):**
+```bash
+brew install openjdk@21
+# Add to shell profile so the JDK is picked up:
+echo 'export JAVA_HOME=$(brew --prefix openjdk@21)' >> ~/.zprofile
+source ~/.zprofile
+```
+
+**Windows (winget):**
+```powershell
+winget install Microsoft.OpenJDK.21
+```
+Or download the installer from [Adoptium](https://adoptium.net) and follow the wizard.
+
+---
+
+### Maven 3.8+
+
+**Linux — Ubuntu / Debian:**
+```bash
+# Option A — SDKMAN (cross-platform, manages versions)
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install maven
+
+# Option B — apt (version varies by distro; verify with mvn -version afterward)
+sudo apt install -y maven
+```
+
+**Linux — Fedora / RHEL / CentOS Stream:**
+```bash
+sudo dnf install maven
+```
+
+**macOS (Homebrew):**
+```bash
+brew install maven
+```
+
+**Windows (winget):**
+```powershell
+winget install Apache.Maven
+```
+Or download the binary ZIP from [maven.apache.org](https://maven.apache.org/download.cgi), unzip it,
+and add `<unzip-dir>/bin` to your `PATH`.
+
+---
+
+### PostgreSQL 15+
+
+**Linux — Ubuntu / Debian** (official PostgreSQL apt repository, guarantees version ≥ 15):
+```bash
+sudo apt install -y curl ca-certificates
+sudo install -d /usr/share/postgresql-common/pgdg
+curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
+  https://www.postgresql.org/media/keys/ACCC4CF8.asc
+. /etc/os-release
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+  https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+  | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt update && sudo apt install -y postgresql-15
+```
+
+**Linux — Fedora / RHEL / CentOS Stream:**
+```bash
+sudo dnf install postgresql15-server
+sudo /usr/pgsql-15/bin/postgresql-15-setup initdb
+sudo systemctl enable postgresql-15
+```
+
+**macOS (Homebrew):**
+```bash
+brew install postgresql@15
+brew services start postgresql@15
+```
+
+**Windows:**
+Download the interactive installer from [postgresql.org/download/windows](https://www.postgresql.org/download/windows/)
+and run it. The installer creates the `postgres` superuser and registers a Windows Service.
