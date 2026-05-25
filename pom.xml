@@ -136,6 +136,15 @@
                         <include>**/*Tests.java</include>
                         <include>**/*IT.java</include>
                     </includes>
+                    <!--
+                        Java 21 emits warnings when Mockito's byte-buddy agent self-attaches
+                        dynamically and when class-data sharing is active.
+                        -XX:+EnableDynamicAgentLoading  permits the attach without a warning.
+                        -Xshare:off                     disables CDS so the boot-loader warning
+                                                        ("Sharing is only supported for boot loader
+                                                        classes") is also suppressed.
+                    -->
+                    <argLine>-XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
                 </configuration>
             </plugin>
         </plugins>
