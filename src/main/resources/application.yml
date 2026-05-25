@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: mini-wsa
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/miniwsa}
+    username: ${DB_USERNAME:miniwsa}
+    password: ${DB_PASSWORD:miniwsa}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: false
+
+server:
+  port: 8080

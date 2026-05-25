@@ -1,0 +1,15 @@
+# Block everything by default
+*
+**/*
+
+# Allow project files only
+!.gitignore
+!.env.example
+!pom.xml
+!README.md
+!src/
+!src/**/
+!src/**/*.java
+!src/**/*.xml
+!src/**/*.yml
+!src/**/*.sql
