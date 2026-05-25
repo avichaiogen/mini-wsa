@@ -8,11 +8,15 @@ import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -112,5 +116,47 @@ class DataGeneratorTest {
         // Verify it deserializes back to a list of the correct size
         EventRequest[] parsed = mapper.readValue(file, EventRequest[].class);
         assertThat(parsed).hasSize(5);
+    }
+
+    // --- nextFileIndex ---
+
+    @Test
+    void nextFileIndex_emptyDir_returnsZero(@TempDir Path tempDir) {
+        assertThat(DataGenerator.nextFileIndex(tempDir.toFile())).isEqualTo(0);
+    }
+
+    @Test
+    void nextFileIndex_existingFiles_returnsNextIndex(@TempDir Path tempDir) throws Exception {
+        Files.writeString(tempDir.resolve("events_000.json"), "[]");
+        Files.writeString(tempDir.resolve("events_001.json"), "[]");
+        Files.writeString(tempDir.resolve("events_002.json"), "[]");
+        assertThat(DataGenerator.nextFileIndex(tempDir.toFile())).isEqualTo(3);
+    }
+
+    @Test
+    void writeBatches_appendsToExistingFiles(@TempDir Path tempDir) throws Exception {
+        ObjectMapper mapper = JsonMapper.builder()
+                .configure(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                .build();
+        // Pre-create events_000.json so the second run should start at events_001.json
+        Files.writeString(tempDir.resolve("events_000.json"), "[]");
+
+        List<EventRequest> events = DataGenerator.generate(5, 0, 0);
+        List<File> written = DataGenerator.writeBatches(events, tempDir.toString(), 10, mapper);
+
+        assertThat(written).hasSize(1);
+        assertThat(written.get(0).getName()).isEqualTo("events_001.json");
+        assertThat(new File(tempDir.toFile(), "events_000.json")).exists();
+    }
+
+    // --- ingestFiles: unhappy path ---
+
+    @Test
+    void ingestFiles_serverUnreachable_throwsIOException(@TempDir Path tempDir) throws Exception {
+        Path file = tempDir.resolve("events_000.json");
+        Files.writeString(file, "[]");
+
+        assertThatThrownBy(() -> DataGenerator.ingestFiles(List.of(file.toFile()), "http://localhost:19999"))
+                .isInstanceOf(IOException.class);
     }
 }
