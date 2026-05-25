@@ -4,16 +4,21 @@ A backend service that ingests security event logs (DLRs), enriches them with at
 and threat scoring, stores them, and exposes REST analytics APIs — built as a simplified version of
 Akamai's Web Security Analytics platform.
 
+> **DLR — Data Log Record:** A structured log entry produced by a web security gateway for every
+> inspected HTTP request. Each DLR captures the request metadata, the matched security rule, the
+> enforcement action taken, and geo/client context.
+
 ---
 
 ## Table of Contents
 1. [Build & Run](#build--run)
 2. [API Documentation](#api-documentation)
 3. [Data Generator](#data-generator)
-4. [Architecture & Technology](#architecture--technology)
-5. [Testing](#testing)
-6. [Feature Deep Dive](#feature-deep-dive)
-7. [Tool Installation](#tool-installation)
+4. [Logging](#logging)
+5. [Architecture & Technology](#architecture--technology)
+6. [Testing](#testing)
+7. [Feature Deep Dive](#feature-deep-dive)
+8. [Tool Installation](#tool-installation)
 
 ---
 
@@ -326,6 +331,51 @@ Ingested: 9 OK, 1 FAILED
 Output files are named `events_NNN.json` (3-digit zero-padded index, e.g. `events_000.json`,
 `events_001.json`). Repeated runs append new files — existing files are never overwritten. Each
 file contains a JSON array ready to POST directly to `POST /v1/events/ingest`.
+
+---
+
+## Logging
+
+The app writes logs to both the console and a rolling file.
+
+### Configuration
+
+Log level and file path are set in `application.yml` — **never edit `log4j2-spring.xml`** for routine changes:
+
+```yaml
+logging:
+  level:
+    com.akamai.miniwsa: INFO   # switch to DEBUG for verbose enrichment traces
+  file:
+    name: logs/mini-wsa.log
+```
+
+### Rolling file policy
+
+- Max file size: **100 MB** (triggers a mid-day roll if needed)
+- Daily rollover at midnight
+- Max **30** files kept; older files are deleted automatically
+- Rolled files are gzip-compressed: `logs/mini-wsa.log.2026-05-25.1.gz`
+
+### Log levels in practice
+
+| Level | What you see |
+|---|---|
+| `INFO` (default) | Batch ingestion: `Ingesting batch: count=N`, `Batch persisted: count=N`; controller entry |
+| `DEBUG` | Per-event enrichment: `Enriched event: eventId=…, attackType=…, threatScore=…`; query params for Samples and Stats; classifier and scorer outputs |
+| `WARN` | All 4xx errors handled by `GlobalExceptionHandler` |
+| `ERROR` | 5xx errors — `IngestionBatchException`, unhandled exceptions (with stack trace) |
+
+### OWASP note
+
+`clientIp`, `userAgent`, and `path` values are **never logged** — only counts, IDs, enums, and computed scores appear in log output.
+
+### Manual verification steps
+
+1. Start the app and POST a batch: confirm `INFO Ingesting batch: count=N` appears in both console and `logs/mini-wsa.log`.
+2. Change `logging.level.com.akamai.miniwsa: DEBUG` in `application.yml` and restart: confirm `DEBUG Enriched event:` lines appear.
+3. Change back to `INFO` and restart: confirm debug lines are gone.
+4. To verify rollover: temporarily set `<SizeBasedTriggeringPolicy size="1KB"/>` in `log4j2-spring.xml`, send a few requests, and confirm gzip-compressed rolled files appear.
 
 ---
 
