@@ -22,10 +22,12 @@ spring:
     # Allow POST body to be either a single object {...} or an array [{...}].
     # IngestionController always binds to List<EventRequest>; this makes both work.
     deserialization:
-      accept-single-value-as-array: true
+      ACCEPT_SINGLE_VALUE_AS_ARRAY: true
     # Serialize Instant as ISO-8601 string ("2026-05-20T14:32:10Z"), not epoch millis.
-    serialization:
-      write-dates-as-timestamps: false
+    # In Jackson 3 (Spring Boot 4), WRITE_DATES_AS_TIMESTAMPS moved from SerializationFeature to DateTimeFeature.
+    datatype:
+      datetime:
+        WRITE_DATES_AS_TIMESTAMPS: false
 
 server:
   port: 8080
