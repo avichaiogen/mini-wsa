@@ -25,80 +25,45 @@ Akamai's Web Security Analytics platform.
 ## Build & Run
 
 ### What you need
-- [Java 21](#java-21-jdk)
+- Git
+- [Java 21+](#java-21-jdk)
 - [Maven 3.8+](#maven-38)
 - [PostgreSQL 15+](#postgresql-15)
 
 Verify:
 ```bash
-java -version    # must show 21.x
+java -version    # must show 21 or later
 mvn -version     # must show 3.8+
 psql --version   # must show 15+
 ```
 
-### Step 1 — Start PostgreSQL
+### Step 1 — Clone the repository
 
-**Linux (systemd-based distros — Ubuntu, Debian, Fedora):**
 ```bash
-sudo systemctl start postgresql
+git clone https://github.com/avichaiogen/mini-wsa.git
+cd mini-wsa
 ```
 
-**macOS (Homebrew):**
+Copy the `.env.example` template and fill in your credentials:
+
 ```bash
-brew services start postgresql@15
+cp .env.example .env
+# open .env and set DB_USERNAME and DB_PASSWORD
 ```
-
-**Windows:**
-PostgreSQL runs as a Windows Service after installation. Start it from **Services** (`services.msc`),
-from **pgAdmin 4**, or via PowerShell as Administrator:
-```powershell
-Start-Service -Name postgresql-x64-15
-```
-
-### Step 2 — Create the database (first time only)
-
-**Linux:**
-```bash
-sudo -u postgres psql -c "CREATE DATABASE miniwsa;"
-sudo -u postgres psql -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
-```
-
-**macOS:**
-```bash
-psql postgres -c "CREATE DATABASE miniwsa;"
-psql postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
-psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
-```
-
-**Windows (run from the PostgreSQL `bin` directory, or use pgAdmin 4):**
-```cmd
-psql -U postgres -c "CREATE DATABASE miniwsa;"
-psql -U postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
-```
-
-### Step 3 — Configure credentials via `.env`
-
-`.env.example` is a template showing the three environment variables the app reads at startup:
 
 | Variable | Default value | Purpose |
 |---|---|---|
 | `DB_URL` | `jdbc:postgresql://localhost:5432/miniwsa` | JDBC connection string |
-| `DB_USERNAME` | *(your DB user)* | PostgreSQL login |
-| `DB_PASSWORD` | *(your DB password)* | PostgreSQL password |
+| `DB_USERNAME` | `miniwsa` | PostgreSQL login |
+| `DB_PASSWORD` | `miniwsa` | PostgreSQL password |
 
-Copy the template and fill in your credentials:
-```bash
-cp .env.example .env
-# open .env and set DB_USERNAME and DB_PASSWORD to match what you used in Step 2
-```
+> **Important:** The `DB_USERNAME` and `DB_PASSWORD` values in `.env` **must exactly match** the username and password you use when creating the database in Step 3. If you follow the example commands in Step 3 unchanged, the defaults already match — no edits needed.
 
-Then export the variables before running the app:
+Then export the variables:
 
 **Linux / macOS:**
 ```bash
-source .env
+set -a; source .env; set +a
 ```
 
 **Windows CMD:**
@@ -111,42 +76,109 @@ for /f "tokens=1,2 delims==" %i in (.env) do set %i=%j
 Get-Content .env | ForEach-Object { $k,$v = $_ -split '=',2; [System.Environment]::SetEnvironmentVariable($k,$v) }
 ```
 
-> **Note:** `source .env` (or the Windows equivalent) only applies to the current terminal session.
+> **Note:** `set -a; source .env; set +a` (or the Windows equivalent) only applies to the current terminal session.
 > Re-run it if you open a new terminal. Alternatively, set the variables permanently in your OS
 > environment (System Properties → Environment Variables on Windows; `/etc/environment` on Linux).
+
+### Step 2 — Start PostgreSQL
+
+**Linux (systemd-based distros — Ubuntu, Debian, Fedora):**
+```bash
+sudo systemctl start postgresql
+```
+
+**macOS (Homebrew):**
+```bash
+brew services start postgresql@<version>
+```
+
+**Windows:**
+PostgreSQL runs as a Windows Service after installation. Start it from **Services** (`services.msc`),
+from **pgAdmin 4**, or via PowerShell as Administrator:
+```powershell
+Start-Service -Name postgresql-x64-<version>
+```
+
+> Replace `<version>` with your installed PostgreSQL version (e.g. `15`, `16`, `17`).
+
+### Step 3 — Create the database (first time only)
+
+> **Important:** Use the same username and password here as in your `.env` file (set in Step 1). The commands below use `miniwsa` / `miniwsa` as an example — replace them with your chosen credentials if different.
+
+**Linux:**
+```bash
+sudo -u postgres psql -c "CREATE DATABASE miniwsa;"
+sudo -u postgres psql -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
+sudo -u postgres psql -d miniwsa -c "GRANT ALL ON SCHEMA public TO miniwsa;"
+```
+
+**macOS:**
+```bash
+psql postgres -c "CREATE DATABASE miniwsa;"
+psql postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
+psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
+psql postgres -d miniwsa -c "GRANT ALL ON SCHEMA public TO miniwsa;"
+```
+
+**Windows (run from the PostgreSQL `bin` directory, or use pgAdmin 4):**
+```cmd
+psql -U postgres -c "CREATE DATABASE miniwsa;"
+psql -U postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
+psql -U postgres -d miniwsa -c "GRANT ALL ON SCHEMA public TO miniwsa;"
+```
+
+> **Why the last command?** PostgreSQL 15+ revoked the default CREATE privilege on the `public` schema. Without it, Flyway cannot create its schema history table and the app will fail to start. The `-d miniwsa` flag is required — this grant must run against the app database, not the default `postgres` database.
 
 ### Step 4 — Build
 ```bash
 mvn clean package -DskipTests
 ```
 
-### Step 5 — Run
+### Step 5 — Test
 ```bash
-java -jar target/mini-wsa-*.jar
+mvn test
+```
+
+Make sure all tests pass before running the app.
+
+### Step 6 — Run
+```bash
+java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
 ```
 
 The app starts on `http://localhost:8080`.
 
-> **Note:** If you restart your terminal, run `source .env` again before starting the app.
+> **Note:** If you restart your terminal, run `set -a; source .env; set +a` again before starting the app.
 
 ### Override DB credentials without editing files
+
+**Linux / macOS:**
 ```bash
 DB_URL=jdbc:postgresql://myhost:5432/mydb \
 DB_USERNAME=myuser \
 DB_PASSWORD=mypass \
-java -jar target/mini-wsa-*.jar
+java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
+```
+
+**Windows PowerShell:**
+```powershell
+$env:DB_URL="jdbc:postgresql://myhost:5432/mydb"; $env:DB_USERNAME="myuser"; $env:DB_PASSWORD="mypass"; java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
 ```
 
 ---
 
 ## API Documentation
 
+> **Windows:** Replace `curl` with `curl.exe` in GET commands. For POST, use the dedicated PowerShell example below.
+
 ### POST /v1/events/ingest — Ingest Events
 
 Accepts a single event or a batch (array). Validates all fields, enriches with attack type and
 threat score, and persists. Batch is all-or-nothing — one invalid event rejects the entire batch.
 
-**Single event:**
+**Single event (Linux / macOS):**
 ```bash
 curl -s -X POST http://localhost:8080/v1/events/ingest \
   -H "Content-Type: application/json" \
@@ -173,6 +205,38 @@ curl -s -X POST http://localhost:8080/v1/events/ingest \
     "requestSize": 1024,
     "responseSize": 256
   }'
+```
+
+**Single event (Windows PowerShell):**
+
+Use `` ` `` for line continuation and `\"` to escape inner double quotes inside the `-d` payload:
+
+```powershell
+curl.exe -s -X POST http://localhost:8080/v1/events/ingest `
+  -H "Content-Type: application/json" `
+  -d "{
+    \"eventId\": \"evt-001\",
+    \"timestamp\": \"2026-05-20T14:32:10Z\",
+    \"configId\": 14227,
+    \"policyId\": \"pol_web1\",
+    \"clientIp\": \"203.0.113.42\",
+    \"hostname\": \"www.example.com\",
+    \"path\": \"/api/v1/login\",
+    \"method\": \"POST\",
+    \"statusCode\": 403,
+    \"userAgent\": \"Mozilla/5.0\",
+    \"rule\": {
+      \"id\": \"950001\",
+      \"name\": \"SQL_INJECTION\",
+      \"message\": \"SQL Injection Attack Detected\",
+      \"severity\": \"CRITICAL\",
+      \"category\": \"INJECTION\"
+    },
+    \"action\": \"DENY\",
+    \"geoLocation\": { \"country\": \"CN\", \"city\": \"Beijing\" },
+    \"requestSize\": 1024,
+    \"responseSize\": 256
+  }"
 ```
 
 **Batch:**
@@ -261,12 +325,9 @@ testing, or sharing a reproducible dataset with teammates.
 
 ### How to run
 
-Build the project first if you haven't already:
-```bash
-mvn clean package -DskipTests
-```
+If you haven't built the project yet, complete Step 4 of Build & Run (`mvn clean package -DskipTests`) first.
 
-Then run via Maven's exec plugin:
+Run via Maven's exec plugin:
 ```bash
 mvn exec:java -Dexec.args="<args>"
 ```
@@ -361,7 +422,7 @@ logging:
 
 | Level | What you see |
 |---|---|
-| `INFO` (default) | Batch ingestion: `Ingesting batch: count=N`, `Batch persisted: count=N`; controller entry |
+| `INFO` (default) | Controller: `POST /v1/events/ingest: batch size=N`; service: `Ingesting batch: count=N`, `Batch persisted: count=N` |
 | `DEBUG` | Per-event enrichment: `Enriched event: eventId=…, attackType=…, threatScore=…`; query params for Samples and Stats; classifier and scorer outputs |
 | `WARN` | All 4xx errors handled by `GlobalExceptionHandler` |
 | `ERROR` | 5xx errors — `IngestionBatchException`, unhandled exceptions (with stack trace) |
@@ -390,9 +451,8 @@ POST /v1/events/ingest
         ▼
  IngestionService
   ├── validate()          ← Bean Validation + OWASP input rules
-  ├── EnrichmentService
-  │    ├── AttackClassifier    (category → human-readable attackType)
-  │    └── ThreatScoreEngine   (computes score 0–100)
+  ├── AttackClassifier    (category → human-readable attackType)
+  ├── ThreatScoreEngine   (computes score 0–100)
   └── SecurityEventRepository.save()
         │
         ▼
@@ -421,12 +481,7 @@ Kafka in front of ingestion decouples write throughput. ClickHouse handles analy
 
 ## Testing
 
-### Run unit tests (no database needed)
-```bash
-mvn test
-```
-
-### Run all tests including integration tests
+### Run all tests
 ```bash
 mvn test
 ```
@@ -440,12 +495,14 @@ mvn test
 | `IngestionServiceTest` | Unit | Validation errors per field; batch rejection; enrichment called |
 | `StatsServiceTest` | Unit | Aggregation logic; configId filter; cross-config aggregation |
 | `SamplesServiceTest` | Unit | Pagination defaults; max limit; filter combinations |
-| `IngestionControllerIT` | Integration | POST single → 201; POST batch → 201; invalid → 400; data persisted |
-| `StatsControllerIT` | Integration | Real data aggregation; empty range; configId filter |
-| `SamplesControllerIT` | Integration | Pagination; sort order; category/action filters |
+| `GlobalExceptionHandlerTest` | Unit | All HTTP error mappings: 400, 404, 405, 415, 500 |
+| `DataGeneratorTest` | Unit | Event generation, file writing, batch ingestion logic |
+| `IpAddressValidatorTest` | Unit | IPv4 and IPv6 format validation |
+| `HttpMethodValidatorTest` | Unit | Allowed HTTP methods; case-insensitive |
+| `StatusCodeValidatorTest` | Unit | Valid HTTP status code range (100–599) |
+| `NoInjectionValidatorTest` | Unit | SQL injection, XSS, and path traversal pattern detection |
 
 Unit tests use `@ExtendWith(MockitoExtension.class)` — no database required.
-Integration tests use `@SpringBootTest` + H2 in PostgreSQL mode — no database setup needed.
 
 ---
 
@@ -508,6 +565,7 @@ All incoming fields are validated before processing:
 - Enum fields (`severity`, `category`, `action`) validated strictly — unknown values return 400
 - String fields capped in length to prevent oversized payload attacks
 - Numeric fields (`requestSize`, `responseSize`) must be non-negative
+- Custom validators enforce format rules: `@ValidIpAddress` (IPv4/IPv6), `@ValidHttpMethod` (7 methods), `@ValidStatusCode` (100–599), `@NoInjection` (blocks SQL, XSS, and path traversal patterns)
 - Error responses never expose internal details, stack traces, or database errors
 - All queries use JPA parameterized statements — SQL injection is not possible
 
@@ -515,29 +573,31 @@ All incoming fields are validated before processing:
 
 ## Tool Installation
 
-### Java 21 JDK
+### Java 21+ JDK
+
+> Replace `<version>` with your target Java version (21 or later, e.g. `21`, `23`, `24`).
 
 **Linux — Ubuntu / Debian:**
 ```bash
-sudo apt update && sudo apt install -y openjdk-21-jdk
+sudo apt update && sudo apt install -y openjdk-<version>-jdk
 ```
 
 **Linux — Fedora / RHEL / CentOS Stream:**
 ```bash
-sudo dnf install java-21-openjdk-devel
+sudo dnf install java-<version>-openjdk-devel
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew install openjdk@21
+brew install openjdk@<version>
 # Add to shell profile so the JDK is picked up:
-echo 'export JAVA_HOME=$(brew --prefix openjdk@21)' >> ~/.zprofile
+echo 'export JAVA_HOME=$(brew --prefix openjdk@<version>)' >> ~/.zprofile
 source ~/.zprofile
 ```
 
 **Windows (winget):**
 ```powershell
-winget install Microsoft.OpenJDK.21
+winget install Microsoft.OpenJDK.<version>
 ```
 Or download the installer from [Adoptium](https://adoptium.net) and follow the wizard.
 
@@ -566,18 +626,17 @@ sudo dnf install maven
 brew install maven
 ```
 
-**Windows (winget):**
-```powershell
-winget install Apache.Maven
-```
-Or download the binary ZIP from [maven.apache.org](https://maven.apache.org/download.cgi), unzip it,
+**Windows:**
+Download the binary ZIP from [maven.apache.org](https://maven.apache.org/download.cgi), unzip it,
 and add `<unzip-dir>/bin` to your `PATH`.
 
 ---
 
 ### PostgreSQL 15+
 
-**Linux — Ubuntu / Debian** (official PostgreSQL apt repository, guarantees version ≥ 15):
+> Replace `<version>` with your target PostgreSQL version (15 or later, e.g. `15`, `16`, `17`).
+
+**Linux — Ubuntu / Debian** (official PostgreSQL apt repository):
 ```bash
 sudo apt install -y curl ca-certificates
 sudo install -d /usr/share/postgresql-common/pgdg
@@ -587,20 +646,20 @@ curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
 echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
   https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
   | sudo tee /etc/apt/sources.list.d/pgdg.list
-sudo apt update && sudo apt install -y postgresql-15
+sudo apt update && sudo apt install -y postgresql-<version>
 ```
 
 **Linux — Fedora / RHEL / CentOS Stream:**
 ```bash
-sudo dnf install postgresql15-server
-sudo /usr/pgsql-15/bin/postgresql-15-setup initdb
-sudo systemctl enable postgresql-15
+sudo dnf install postgresql<version>-server
+sudo /usr/pgsql-<version>/bin/postgresql-<version>-setup initdb
+sudo systemctl enable postgresql-<version>
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew install postgresql@15
-brew services start postgresql@15
+brew install postgresql@<version>
+brew services start postgresql@<version>
 ```
 
 **Windows:**
