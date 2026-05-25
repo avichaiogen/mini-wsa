@@ -4,11 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -93,6 +97,39 @@ public class GlobalExceptionHandler {
     public Map<String, Object> handleIngestionBatch(IngestionBatchException ex) {
         log.error("Ingestion batch failed", ex);
         return Map.of("error", "Internal server error");
+    }
+
+    /**
+     * Handles requests to URLs that have no matching controller (404).
+     * Requires spring.mvc.throw-exception-if-no-handler-found=true and
+     * spring.web.resources.add-mappings=false in application.yml.
+     */
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, Object> handleNoHandlerFound(Exception ex) {
+        log.warn("No handler found: {}", ex.getMessage());
+        return Map.of("error", "Resource not found");
+    }
+
+    /**
+     * Handles requests that use the wrong HTTP method on a known endpoint (405).
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    public Map<String, Object> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method not allowed: {}", ex.getMessage());
+        return Map.of("error", "HTTP method not allowed");
+    }
+
+    /**
+     * Handles requests with a missing or unsupported Content-Type header (415).
+     * Common cause: POST to /ingest without Content-Type: application/json.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+    public Map<String, Object> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        log.warn("Unsupported media type: {}", ex.getMessage());
+        return Map.of("error", "Unsupported media type");
     }
 
     /**
