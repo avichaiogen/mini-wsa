@@ -30,23 +30,83 @@ psql --version   # must show 15+
 ```
 
 ### Step 1 — Start PostgreSQL
+
+**Linux (systemd-based distros — Ubuntu, Debian, Fedora):**
 ```bash
 sudo systemctl start postgresql
 ```
 
+**macOS (Homebrew):**
+```bash
+brew services start postgresql@15
+```
+
+**Windows:**
+PostgreSQL runs as a Windows Service after installation. Start it from **Services** (`services.msc`),
+from **pgAdmin 4**, or via PowerShell as Administrator:
+```powershell
+Start-Service -Name postgresql-x64-15
+```
+
 ### Step 2 — Create the database (first time only)
+
+**Linux:**
 ```bash
 sudo -u postgres psql -c "CREATE DATABASE miniwsa;"
 sudo -u postgres psql -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
 ```
 
-### Step 3 — Set up credentials
+**macOS:**
+```bash
+psql postgres -c "CREATE DATABASE miniwsa;"
+psql postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
+psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
+```
+
+**Windows (run from the PostgreSQL `bin` directory, or use pgAdmin 4):**
+```cmd
+psql -U postgres -c "CREATE DATABASE miniwsa;"
+psql -U postgres -c "CREATE USER miniwsa WITH PASSWORD 'miniwsa';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE miniwsa TO miniwsa;"
+```
+
+### Step 3 — Configure credentials via `.env`
+
+`.env.example` is a template showing the three environment variables the app reads at startup:
+
+| Variable | Default value | Purpose |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/miniwsa` | JDBC connection string |
+| `DB_USERNAME` | *(your DB user)* | PostgreSQL login |
+| `DB_PASSWORD` | *(your DB password)* | PostgreSQL password |
+
+Copy the template and fill in your credentials:
 ```bash
 cp .env.example .env
-# Edit .env if your DB host/user/password differ from the defaults
+# open .env and set DB_USERNAME and DB_PASSWORD to match what you used in Step 2
+```
+
+Then export the variables before running the app:
+
+**Linux / macOS:**
+```bash
 source .env
 ```
+
+**Windows CMD:**
+```cmd
+for /f "tokens=1,2 delims==" %i in (.env) do set %i=%j
+```
+
+**Windows PowerShell:**
+```powershell
+Get-Content .env | ForEach-Object { $k,$v = $_ -split '=',2; [System.Environment]::SetEnvironmentVariable($k,$v) }
+```
+
+> **Note:** `source .env` (or the Windows equivalent) only applies to the current terminal session.
+> Re-run it if you open a new terminal. Alternatively, set the variables permanently in your OS
+> environment (System Properties → Environment Variables on Windows; `/etc/environment` on Linux).
 
 ### Step 4 — Build
 ```bash
@@ -198,21 +258,16 @@ POST /v1/events/ingest
         └── GET /v1/events/samples ← SamplesService (filter + paginate)
 ```
 
-### Technology Choices
+### Technologies
 
-| Component | Choice | Why |
+| Component | Choice | Notes |
 |---|---|---|
-| Language | Java 21 | LTS, virtual threads, modern switch expressions |
-| Framework | Spring Boot 4.0 | Industry standard; auto-configuration; mature ecosystem |
-| Storage | PostgreSQL | SQL aggregations are native fit for the stats API; ACID transactions for batch ingestion |
+| Language | Java 21 | LTS release |
+| Framework | Spring Boot 4.0 | REST, JPA, validation, auto-configuration |
+| Storage | PostgreSQL | Relational fit for aggregation queries and ACID batch ingestion |
 | Migrations | Flyway | Versioned, reproducible schema evolution |
-| Logging | SLF4J + Log4j2 | SLF4J decouples code from impl; Log4j2 async appenders for high-throughput ingestion |
-| Testing | JUnit 5 + Mockito + Testcontainers | Unit tests with mocked repos; integration tests against real PostgreSQL |
-
-**Why PostgreSQL over MongoDB:**
-The stats API requires GROUP BY, top-N, and time-window COUNT queries — SQL's native strength.
-The schema is fixed and well-known so document flexibility offers no benefit.
-ACID transactions enforce the all-or-nothing batch ingestion contract.
+| Logging | SLF4J + Log4j2 | Async appenders; decoupled facade |
+| Testing | JUnit 5 + Mockito + H2 | Unit tests with mocked repos; integration tests with in-memory DB |
 
 **Scaling path for production:**
 TimescaleDB (PostgreSQL extension) adds automatic time partitioning and continuous aggregates.
@@ -227,9 +282,9 @@ Kafka in front of ingestion decouples write throughput. ClickHouse handles analy
 mvn test
 ```
 
-### Run all tests including integration tests (requires Docker for Testcontainers)
+### Run all tests including integration tests
 ```bash
-mvn verify
+mvn test
 ```
 
 ### Test structure
@@ -246,7 +301,7 @@ mvn verify
 | `SamplesControllerIT` | Integration | Pagination; sort order; category/action filters |
 
 Unit tests use `@ExtendWith(MockitoExtension.class)` — no database required.
-Integration tests use `@SpringBootTest` + Testcontainers, which spin up a real PostgreSQL container automatically.
+Integration tests use `@SpringBootTest` + H2 in PostgreSQL mode — no database setup needed.
 
 ---
 
