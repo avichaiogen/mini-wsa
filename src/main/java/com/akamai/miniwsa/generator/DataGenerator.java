@@ -17,8 +17,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Standalone data generator — no Spring context required.
@@ -80,6 +80,16 @@ public class DataGenerator {
     // Weighted pool — 403 most common (WAF block), then 400, then others
     private static final int[] STATUS_POOL = {403, 403, 403, 400, 400, 200, 301, 500};
 
+    // Weighted method pool — GET 50%, POST 30%, PUT 10%, DELETE 10%
+    private static final String[] METHOD_POOL = {
+            "GET", "GET", "GET", "GET", "GET",
+            "POST", "POST", "POST",
+            "PUT",
+            "DELETE"
+    };
+
+    private static final Instant EPOCH_2020 = Instant.parse("2020-01-01T00:00:00Z");
+
     // --- Entry point ---
 
     public static void main(String[] args) throws Exception {
@@ -100,6 +110,7 @@ public class DataGenerator {
         }
 
         List<EventRequest> events = generate(count, waves, waveSize);
+        printStats(events);
 
         ObjectMapper mapper = JsonMapper.builder()
                 .configure(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS, false)
@@ -125,23 +136,31 @@ public class DataGenerator {
         Random rng = new Random();
         List<EventRequest> events = new ArrayList<>(count);
 
+        Instant now = Instant.now();
+        long rangeSeconds = now.getEpochSecond() - EPOCH_2020.getEpochSecond();
+
         // Attack waves: each wave shares a fixed IP + path + configId
         for (int w = 0; w < waves && events.size() < count; w++) {
             String waveIp     = randomIp(rng);
             String wavePath   = pick(PATHS, rng);
             long   waveConfig = pick(CONFIG_IDS, rng);
             for (int i = 0; i < waveSize && events.size() < count; i++) {
-                events.add(buildEvent(waveIp, wavePath, waveConfig, rng));
+                events.add(buildEvent(waveIp, wavePath, waveConfig, rng, rangeSeconds));
             }
         }
 
         // Fill remaining slots with random events
         while (events.size() < count) {
-            events.add(buildEvent(randomIp(rng), pick(PATHS, rng), pick(CONFIG_IDS, rng), rng));
+            events.add(buildEvent(randomIp(rng), pick(PATHS, rng), pick(CONFIG_IDS, rng), rng, rangeSeconds));
         }
 
         // Shuffle so wave events are distributed throughout the list
         Collections.shuffle(events, rng);
+
+        // Assign zero-padded sequential IDs in final list order
+        for (int i = 0; i < events.size(); i++) {
+            events.get(i).setEventId(String.format("%06d", i + 1));
+        }
         return events;
     }
 
@@ -192,16 +211,17 @@ public class DataGenerator {
 
     // --- Private builders ---
 
-    private static EventRequest buildEvent(String ip, String path, long configId, Random rng) {
+    private static EventRequest buildEvent(String ip, String path, long configId,
+                                           Random rng, long rangeSeconds) {
         EventRequest req = new EventRequest();
-        req.setEventId("evt-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
-        req.setTimestamp(Instant.now().minus(rng.nextInt(30 * 24 * 60), ChronoUnit.MINUTES));
+        // eventId assigned post-shuffle in generate() — left null here intentionally
+        req.setTimestamp(EPOCH_2020.plusSeconds(ThreadLocalRandom.current().nextLong(rangeSeconds)));
         req.setConfigId(configId);
         req.setPolicyId("pol_" + String.format("%04d", configId % 10000));
         req.setClientIp(ip);
         req.setHostname(pick(HOSTNAMES, rng));
         req.setPath(path);
-        req.setMethod(rng.nextInt(10) < 6 ? "GET" : "POST");
+        req.setMethod(METHOD_POOL[rng.nextInt(METHOD_POOL.length)]);
         req.setStatusCode(STATUS_POOL[rng.nextInt(STATUS_POOL.length)]);
         req.setUserAgent(pick(USER_AGENTS, rng));
         req.setRule(randomRule(rng));
@@ -238,5 +258,66 @@ public class DataGenerator {
 
     private static <T> T pick(List<T> list, Random rng) {
         return list.get(rng.nextInt(list.size()));
+    }
+
+    // --- Console statistics ---
+
+    public static void printStats(List<EventRequest> events) {
+        if (events.isEmpty()) {
+            System.out.println("No events generated.");
+            return;
+        }
+
+        Map<Long, ConfigStats> stats = new LinkedHashMap<>();
+        for (EventRequest e : events) {
+            stats.computeIfAbsent(e.getConfigId(), k -> new ConfigStats()).record(e);
+        }
+
+        System.out.println();
+        System.out.println("=== Data Generator Statistics ===");
+        System.out.printf("Total events generated: %d%n%n", events.size());
+        System.out.printf("%-10s | %5s | %-20s | %-20s | %-34s | Top Action%n",
+                "ConfigId", "Count", "Min Timestamp", "Max Timestamp", "Severity Distribution");
+        System.out.println("-".repeat(115));
+
+        stats.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    long cid = entry.getKey();
+                    ConfigStats s = entry.getValue();
+                    String dist = String.format("CRIT:%-4d HIGH:%-4d MED:%-4d LOW:%-4d",
+                            s.bySeverity.getOrDefault(Severity.CRITICAL, 0),
+                            s.bySeverity.getOrDefault(Severity.HIGH, 0),
+                            s.bySeverity.getOrDefault(Severity.MEDIUM, 0),
+                            s.bySeverity.getOrDefault(Severity.LOW, 0));
+                    Action topAction = s.byAction.entrySet().stream()
+                            .max(Map.Entry.comparingByValue())
+                            .map(Map.Entry::getKey).orElse(null);
+                    System.out.printf("%-10d | %5d | %-20s | %-20s | %-34s | %s(%d)%n",
+                            cid, s.count,
+                            s.minTimestamp.toString().substring(0, 19) + "Z",
+                            s.maxTimestamp.toString().substring(0, 19) + "Z",
+                            dist,
+                            topAction,
+                            topAction == null ? 0 : s.byAction.get(topAction));
+                });
+        System.out.println();
+    }
+
+    private static class ConfigStats {
+        int count;
+        Instant minTimestamp;
+        Instant maxTimestamp;
+        final Map<Severity, Integer> bySeverity = new EnumMap<>(Severity.class);
+        final Map<Action, Integer>   byAction    = new EnumMap<>(Action.class);
+
+        void record(EventRequest e) {
+            count++;
+            Instant ts = e.getTimestamp();
+            if (minTimestamp == null || ts.isBefore(minTimestamp)) minTimestamp = ts;
+            if (maxTimestamp == null || ts.isAfter(maxTimestamp))  maxTimestamp = ts;
+            bySeverity.merge(e.getRule().getSeverity(), 1, Integer::sum);
+            byAction.merge(e.getAction(), 1, Integer::sum);
+        }
     }
 }

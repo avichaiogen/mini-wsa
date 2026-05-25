@@ -9,11 +9,14 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -158,5 +161,61 @@ class DataGeneratorTest {
 
         assertThatThrownBy(() -> DataGenerator.ingestFiles(List.of(file.toFile()), "http://localhost:19999"))
                 .isInstanceOf(IOException.class);
+    }
+
+    // --- New P1 tests ---
+
+    @Test
+    void generate_eventIdsAreZeroPaddedSequential() {
+        List<EventRequest> events = DataGenerator.generate(10, 0, 0);
+        assertThat(events).hasSize(10);
+        for (int i = 0; i < events.size(); i++) {
+            assertThat(events.get(i).getEventId()).isEqualTo(String.format("%06d", i + 1));
+        }
+    }
+
+    @Test
+    void generate_timestampsOnOrAfterEpoch2020() {
+        Instant epoch2020 = Instant.parse("2020-01-01T00:00:00Z");
+        List<EventRequest> events = DataGenerator.generate(50, 0, 0);
+        events.forEach(e -> assertThat(e.getTimestamp()).isAfterOrEqualTo(epoch2020));
+    }
+
+    @Test
+    void generate_methodsOnlyFromAllowedSet() {
+        Set<String> allowed = Set.of("GET", "POST", "PUT", "DELETE");
+        List<EventRequest> events = DataGenerator.generate(200, 0, 0);
+        events.forEach(e -> assertThat(allowed).contains(e.getMethod()));
+    }
+
+    @Test
+    void generate_largeSample_containsPutAndDelete() {
+        // PUT+DELETE at 20% combined — with 200 events the probability of neither
+        // appearing is astronomically small (< 10^-18)
+        List<EventRequest> events = DataGenerator.generate(200, 0, 0);
+        Set<String> methods = events.stream().map(EventRequest::getMethod).collect(Collectors.toSet());
+        assertThat(methods).contains("PUT", "DELETE");
+    }
+
+    @Test
+    void printStats_doesNotThrow_onNonEmptyList() {
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+        try {
+            DataGenerator.printStats(DataGenerator.generate(50, 2, 5));
+        } finally {
+            System.setOut(original);
+        }
+    }
+
+    @Test
+    void printStats_doesNotThrow_onEmptyList() {
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+        try {
+            DataGenerator.printStats(List.of());
+        } finally {
+            System.setOut(original);
+        }
     }
 }
