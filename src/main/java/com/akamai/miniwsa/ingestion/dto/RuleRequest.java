@@ -27,7 +27,7 @@ public class RuleRequest {
     @NotBlank @Size(max = 500)
     private String message;
 
-    // A8: only CRITICAL/HIGH/MEDIUM/LOW accepted — unknown values → 400 via Jackson
+    // Only CRITICAL/HIGH/MEDIUM/LOW accepted — unknown values → 400 via Jackson
     @NotNull
     private Severity severity;
 

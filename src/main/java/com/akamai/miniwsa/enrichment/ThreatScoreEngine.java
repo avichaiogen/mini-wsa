@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  *   - rule.severity : CRITICAL=40, HIGH=30, MEDIUM=20, LOW=10
  *   - action        : DENY=+20, ALERT=+10, MONITOR=+0
  *   - path          : contains "/admin" or "/login" → +15
- *   - priorCount    : ≥5 prior events from same clientIp in last 10 min → +15 (A4)
+ *   - priorCount    : ≥5 prior events from same clientIp in last 10 min → +15
  *
  * @param priorCount number of events already stored from the same clientIp in the last 10 minutes,
  *                   queried by IngestionService before this call. Keeping I/O out of this class
@@ -46,7 +46,7 @@ public class ThreatScoreEngine {
             score += 15;
         }
 
-        // Repeat-offender bonus (A4): ≥5 prior events from same IP in last 10 min
+        // Repeat-offender bonus: ≥5 prior events from same IP in last 10 min
         if (priorCount >= 5) {
             score += 15;
         }

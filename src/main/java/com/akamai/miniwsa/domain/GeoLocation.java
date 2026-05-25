@@ -3,7 +3,7 @@ package com.akamai.miniwsa.domain;
 // @Embeddable: no own DB table — columns are inlined into the owning entity's table (security_events).
 // Column names are overridden via @AttributeOverrides in SecurityEvent.
 import jakarta.persistence.Embeddable;
-// Bean Validation: enforces A6 (country and city are required, non-blank).
+// Bean Validation: country and city are both required (non-blank).
 import jakarta.validation.constraints.NotBlank;
 // Caps string length — OWASP: prevents oversized payload attacks at the persistence boundary.
 import jakarta.validation.constraints.Size;
@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Country and city extracted from the incoming DLR. Both fields are required (A6). */
+/** Country and city extracted from the incoming DLR. Both fields are required. */
 @Embeddable
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class GeoLocation {

@@ -1,7 +1,7 @@
 -- V1: initial schema for security_events.
 --
 -- rule_* and geo_* columns are JPA @Embeddable fields inlined from Rule and GeoLocation.
--- attack_type and threat_score are enrichment fields populated at ingestion time (Phase 4).
+-- attack_type and threat_score are enrichment fields populated at ingestion time.
 -- received_at is the server-side ingestion timestamp, never sourced from the client.
 --
 -- CHECK constraints enforce OWASP numeric bounds at the DB layer as a second line of defence

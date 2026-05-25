@@ -67,7 +67,7 @@ class ThreatScoreEngineTest {
         assertThat(engine.compute(buildRequest(Severity.CRITICAL, Action.DENY, "/api/data"), 0)).isEqualTo(60);
     }
 
-    // --- Repeat-offender bonus (A4) ---
+    // --- Repeat-offender bonus ---
 
     @Test
     void compute_repeatOffender_below5_noBonus() {

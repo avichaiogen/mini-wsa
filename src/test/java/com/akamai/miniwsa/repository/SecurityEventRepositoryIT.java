@@ -3,7 +3,6 @@ package com.akamai.miniwsa.repository;
 /**
  * Integration tests for SecurityEventRepository.
  *
- * TODO: add tests if time permits.
  * Suggested coverage:
  *   - save and findById round-trip (all fields persisted correctly)
  *   - embedded Rule and GeoLocation fields survive persistence

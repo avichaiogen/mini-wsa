@@ -9,7 +9,7 @@ import lombok.Setter;
 
 /**
  * Input DTO for geographic location embedded in an incoming DLR.
- * A6: both country and city are required.
+ * Both country and city are required.
  * Validated via @Valid cascade from EventRequest.
  */
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor

@@ -18,11 +18,11 @@ import java.util.List;
 /**
  * Orchestrates the ingestion pipeline for a batch of security events:
  *   1. Map each EventRequest DTO to a SecurityEvent entity
- *   2. Set server-side receivedAt (never trusted from client — A3)
+ *   2. Set server-side receivedAt (never trusted from client)
  *   3. Enrich with attackType (AttackClassifier) and threatScore (ThreatScoreEngine)
  *   4. Persist all events in a single transaction
  *
- * @Transactional enforces A2 (all-or-nothing batch): if any save fails, the entire
+ * @Transactional makes this all-or-nothing: if any save fails, the entire
  * batch is rolled back. Bean Validation at the controller layer already ensures no
  * invalid event reaches this service, but the transaction provides a DB-level safety net.
  */
@@ -75,7 +75,7 @@ public class IngestionService {
         event.setRequestSize(req.getRequestSize());
         event.setResponseSize(req.getResponseSize());
 
-        // Server-side timestamp — never sourced from client (A3)
+        // Server-side timestamp — never sourced from client
         event.setReceivedAt(Instant.now());
 
         // Enrichment
