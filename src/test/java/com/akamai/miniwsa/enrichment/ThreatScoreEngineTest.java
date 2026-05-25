@@ -91,6 +91,21 @@ class ThreatScoreEngineTest {
         assertThat(engine.compute(buildRequest(Severity.CRITICAL, Action.DENY, "/admin"), 5)).isEqualTo(90);
     }
 
+    // --- Unhappy path / edge cases ---
+
+    @Test
+    void compute_loginEmbeddedInLongerPath_appliesBonus() {
+        // /api/v1/login contains "/login" → path bonus applies
+        assertThat(engine.compute(buildRequest(Severity.CRITICAL, Action.DENY, "/api/v1/login"), 0)).isEqualTo(75);
+    }
+
+    @Test
+    void compute_nullPath_throwsNullPointerException() {
+        // null path is rejected by Bean Validation before reaching this class; NPE documents fail-fast contract
+        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+                () -> engine.compute(buildRequest(Severity.CRITICAL, Action.DENY, null), 0));
+    }
+
     private EventRequest buildRequest(Severity severity, Action action, String path) {
         RuleRequest rule = new RuleRequest(
                 "950001", "TEST_RULE", "Test message", severity, RuleCategory.INJECTION);

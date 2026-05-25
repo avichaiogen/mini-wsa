@@ -20,10 +20,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -123,6 +128,40 @@ class IngestionServiceTest {
         assertThat(saved.getAction()).isEqualTo(req.getAction());
         assertThat(saved.getRequestSize()).isEqualTo(req.getRequestSize());
         assertThat(saved.getResponseSize()).isEqualTo(req.getResponseSize());
+    }
+
+    // --- Unhappy path ---
+
+    @Test
+    void ingest_emptyList_callsSaveAllWithEmptyList() {
+        service.ingest(List.of());
+
+        ArgumentCaptor<List<SecurityEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(repository).saveAll(captor.capture());
+        assertThat(captor.getValue()).isEmpty();
+    }
+
+    @Test
+    void ingest_repositoryThrows_propagatesException() {
+        when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
+        when(repository.saveAll(any())).thenThrow(new DataIntegrityViolationException("DB error"));
+
+        assertThatThrownBy(() -> service.ingest(List.of(buildRequest())))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void ingest_attackClassifierThrows_propagatesException() {
+        // classify() is called before the repo count query; when it throws saveAll is never reached
+        when(attackClassifier.classify(any())).thenThrow(new RuntimeException("classifier failure"));
+
+        assertThatThrownBy(() -> service.ingest(List.of(buildRequest())))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("classifier failure");
+
+        verify(repository, never()).saveAll(any());
     }
 
     private EventRequest buildRequest() {

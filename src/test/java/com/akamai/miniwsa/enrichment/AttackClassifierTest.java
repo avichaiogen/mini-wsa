@@ -43,4 +43,13 @@ class AttackClassifierTest {
     void classify_rateLimit() {
         assertThat(classifier.classify(RuleCategory.RATE_LIMIT)).isEqualTo("Rate Limiting");
     }
+
+    // --- Unhappy path ---
+
+    @Test
+    void classify_null_throwsNullPointerException() {
+        // null is never a valid input post-Bean Validation; documents fail-fast contract
+        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+                () -> classifier.classify(null));
+    }
 }

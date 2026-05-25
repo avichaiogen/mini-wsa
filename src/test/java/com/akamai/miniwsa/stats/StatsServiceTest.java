@@ -18,7 +18,11 @@ import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.QueryTimeoutException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -122,6 +126,47 @@ class StatsServiceTest {
 
         assertThat(result.byAction()).containsEntry(Action.DENY, 2L);
         assertThat(result.byAction()).containsEntry(Action.ALERT, 1L);
+    }
+
+    // --- Unhappy path ---
+
+    @Test
+    void getSummary_repositoryThrows_propagatesException() {
+        when(repository.countFiltered(any(), any(), any()))
+                .thenThrow(new QueryTimeoutException("timeout"));
+
+        assertThatThrownBy(() -> statsService.getSummary(null, null, null))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void getSummary_fromAfterTo_returnsZeroTotals() {
+        // Service has no cross-field validation; passes inverted range to repo which returns 0
+        Instant from = Instant.parse("2026-12-31T00:00:00Z");
+        Instant to   = Instant.parse("2026-01-01T00:00:00Z");
+        stubEmptyResults(null, from, to);
+
+        StatsSummaryResponse result = statsService.getSummary(null, from, to);
+
+        assertThat(result.totalEvents()).isZero();
+        assertThat(result.byCategory()).isEmpty();
+        assertThat(result.topAttackers()).isEmpty();
+    }
+
+    @Test
+    void getSummary_exactly10Attackers_allReturned() {
+        List<AttackerRow> ten = java.util.stream.IntStream.rangeClosed(1, 10)
+                .mapToObj(i -> new AttackerRow("10.0.0." + i, i, 50.0))
+                .toList();
+        when(repository.countFiltered(any(), any(), any())).thenReturn(10L);
+        when(repository.countByCategory(any(), any(), any())).thenReturn(List.of());
+        when(repository.countByAction(any(), any(), any())).thenReturn(List.of());
+        when(repository.topAttackers(any(), any(), any(), any())).thenReturn(ten);
+        when(repository.topTargetedPaths(any(), any(), any(), any())).thenReturn(List.of());
+
+        StatsSummaryResponse result = statsService.getSummary(null, null, null);
+
+        assertThat(result.topAttackers()).hasSize(10);
     }
 
     private void stubEmptyResults(Long configId, Instant from, Instant to) {
