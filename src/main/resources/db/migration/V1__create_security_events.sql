@@ -1,3 +1,11 @@
+-- V1: initial schema for security_events.
+--
+-- rule_* and geo_* columns are JPA @Embeddable fields inlined from Rule and GeoLocation.
+-- attack_type and threat_score are enrichment fields populated at ingestion time (Phase 4).
+-- received_at is the server-side ingestion timestamp, never sourced from the client.
+--
+-- CHECK constraints enforce OWASP numeric bounds at the DB layer as a second line of defence
+-- (Bean Validation in the service layer is the first).
 CREATE TABLE security_events (
     id            BIGSERIAL       PRIMARY KEY,
     event_id      VARCHAR(100)    NOT NULL,

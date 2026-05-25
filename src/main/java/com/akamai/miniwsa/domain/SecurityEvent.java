@@ -1,17 +1,31 @@
 package com.akamai.miniwsa.domain;
 
+// Wildcard covers: @Entity, @Table, @Id, @GeneratedValue, @Column, @Embedded,
+// @AttributeOverride(s), @Enumerated, EnumType — all standard JPA mapping annotations.
 import jakarta.persistence.*;
+// @Valid on embedded fields cascades Bean Validation into Rule and GeoLocation.
+// Without it, @NotBlank/@NotNull inside those classes would be silently ignored.
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+// Lombok: @NoArgsConstructor required by JPA spec; @Getter/@Setter replace ~40 boilerplate methods.
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// Instant maps to TIMESTAMPTZ in PostgreSQL — always UTC, no timezone ambiguity.
 import java.time.Instant;
 
+/**
+ * Persisted security event (DLR) enriched with attackType, threatScore, and receivedAt.
+ *
+ * Rule and GeoLocation are @Embeddable — their fields are stored directly in this table
+ * under prefixed column names (rule_id, rule_name, … geo_country, geo_city) via @AttributeOverrides.
+ *
+ * receivedAt is set server-side at ingestion time, never trusted from the client.
+ */
 @Entity
 @Table(name = "security_events")
 @Getter @Setter @NoArgsConstructor

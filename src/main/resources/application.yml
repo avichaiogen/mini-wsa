@@ -2,14 +2,20 @@ spring:
   application:
     name: mini-wsa
   datasource:
+    # Values read from environment variables; defaults match the README setup guide.
     url: ${DB_URL:jdbc:postgresql://localhost:5432/miniwsa}
     username: ${DB_USERNAME:miniwsa}
     password: ${DB_PASSWORD:miniwsa}
   jpa:
     hibernate:
+      # "validate": Hibernate checks the DB schema matches the entities but never changes it.
+      # Flyway is responsible for all DDL — Hibernate only reads.
       ddl-auto: validate
+    # open-in-view: false prevents the anti-pattern of lazy-loading DB data inside the HTTP response
+    # rendering phase, which holds a DB connection open for the full request lifecycle.
     open-in-view: false
   flyway:
+    # Flyway runs on startup before Hibernate validation, applying any pending migrations.
     enabled: true
 
 server:
