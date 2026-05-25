@@ -22,6 +22,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,7 +47,8 @@ class IngestionServiceTest {
     @Test
     void ingest_singleEvent_callsSaveAll() {
         when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
-        when(threatScoreEngine.compute(any())).thenReturn(60);
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
 
         service.ingest(List.of(buildRequest()));
 
@@ -57,7 +60,8 @@ class IngestionServiceTest {
     @Test
     void ingest_batchOfTwo_savesBothEntities() {
         when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
-        when(threatScoreEngine.compute(any())).thenReturn(60);
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
 
         service.ingest(List.of(buildRequest(), buildRequest()));
 
@@ -69,7 +73,8 @@ class IngestionServiceTest {
     @Test
     void ingest_setsReceivedAtServerSide() {
         when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
-        when(threatScoreEngine.compute(any())).thenReturn(60);
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
         Instant before = Instant.now();
 
         service.ingest(List.of(buildRequest()));
@@ -83,7 +88,8 @@ class IngestionServiceTest {
     @Test
     void ingest_populatesAttackTypeAndThreatScoreFromEnrichmentServices() {
         when(attackClassifier.classify(RuleCategory.INJECTION)).thenReturn("SQL/Command Injection");
-        when(threatScoreEngine.compute(any())).thenReturn(75);
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(75);
 
         service.ingest(List.of(buildRequest()));
 
@@ -97,7 +103,8 @@ class IngestionServiceTest {
     @Test
     void ingest_mapsAllClientFieldsToEntity() {
         when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
-        when(threatScoreEngine.compute(any())).thenReturn(60);
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
         EventRequest req = buildRequest();
 
         service.ingest(List.of(req));
