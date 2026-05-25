@@ -170,7 +170,7 @@ class DataGeneratorTest {
         List<EventRequest> events = DataGenerator.generate(10, 0, 0);
         assertThat(events).hasSize(10);
         for (int i = 0; i < events.size(); i++) {
-            assertThat(events.get(i).getEventId()).isEqualTo(String.format("%06d", i + 1));
+            assertThat(events.get(i).getEventId()).isEqualTo(String.format("evt-%06d", i + 1));
         }
     }
 
