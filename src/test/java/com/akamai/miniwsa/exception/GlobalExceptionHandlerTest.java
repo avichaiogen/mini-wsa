@@ -3,7 +3,14 @@ package com.akamai.miniwsa.exception;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,5 +100,50 @@ class GlobalExceptionHandlerTest {
         Map<String, Object> body = handler.handleIngestionBatch(ex);
 
         assertThat(body.values()).doesNotContain("secret db detail");
+    }
+
+    // --- handleNoHandlerFound ---
+
+    @Test
+    void handleNoHandlerFound_noHandlerFoundException_returns404Body() {
+        NoHandlerFoundException ex = new NoHandlerFoundException("GET", "/v1/unknown", null);
+
+        Map<String, Object> body = handler.handleNoHandlerFound(ex);
+
+        assertThat(body).containsEntry("error", "Resource not found")
+                        .doesNotContainKey("field");
+    }
+
+    @Test
+    void handleNoHandlerFound_noResourceFoundException_returns404Body() {
+        NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/static/missing.css", "missing.css");
+
+        Map<String, Object> body = handler.handleNoHandlerFound(ex);
+
+        assertThat(body).containsEntry("error", "Resource not found");
+    }
+
+    // --- handleMethodNotAllowed ---
+
+    @Test
+    void handleMethodNotAllowed_returns405Body() {
+        HttpRequestMethodNotSupportedException ex =
+                new HttpRequestMethodNotSupportedException("GET", List.of("POST"));
+
+        Map<String, Object> body = handler.handleMethodNotAllowed(ex);
+
+        assertThat(body).containsEntry("error", "HTTP method not allowed");
+    }
+
+    // --- handleUnsupportedMediaType ---
+
+    @Test
+    void handleUnsupportedMediaType_returns415Body() {
+        HttpMediaTypeNotSupportedException ex =
+                new HttpMediaTypeNotSupportedException("text/plain is not supported");
+
+        Map<String, Object> body = handler.handleUnsupportedMediaType(ex);
+
+        assertThat(body).containsEntry("error", "Unsupported media type");
     }
 }
