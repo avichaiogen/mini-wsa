@@ -18,5 +18,14 @@ spring:
     # Flyway runs on startup before Hibernate validation, applying any pending migrations.
     enabled: true
 
+  jackson:
+    # Allow POST body to be either a single object {...} or an array [{...}].
+    # IngestionController always binds to List<EventRequest>; this makes both work.
+    deserialization:
+      accept-single-value-as-array: true
+    # Serialize Instant as ISO-8601 string ("2026-05-20T14:32:10Z"), not epoch millis.
+    serialization:
+      write-dates-as-timestamps: false
+
 server:
   port: 8080
