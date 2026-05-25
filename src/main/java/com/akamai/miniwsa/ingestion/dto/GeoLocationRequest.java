@@ -1,5 +1,6 @@
 package com.akamai.miniwsa.ingestion.dto;
 
+import com.akamai.miniwsa.validation.NoInjection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -15,9 +16,9 @@ import lombok.Setter;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class GeoLocationRequest {
 
-    @NotBlank @Size(max = 100)
+    @NotBlank @Size(max = 100) @NoInjection
     private String country;
 
-    @NotBlank @Size(max = 100)
+    @NotBlank @Size(max = 100) @NoInjection
     private String city;
 }

@@ -1,6 +1,10 @@
 package com.akamai.miniwsa.ingestion.dto;
 
 import com.akamai.miniwsa.domain.Action;
+import com.akamai.miniwsa.validation.NoInjection;
+import com.akamai.miniwsa.validation.ValidHttpMethod;
+import com.akamai.miniwsa.validation.ValidIpAddress;
+import com.akamai.miniwsa.validation.ValidStatusCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -27,7 +31,7 @@ import java.time.Instant;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class EventRequest {
 
-    @NotBlank @Size(max = 100)
+    @NotBlank @Size(max = 100) @NoInjection
     private String eventId;
 
     // Instant maps from/to ISO-8601 string; Jackson's JavaTimeModule handles the conversion.
@@ -37,25 +41,25 @@ public class EventRequest {
     @NotNull
     private Long configId;
 
-    @NotBlank @Size(max = 100)
+    @NotBlank @Size(max = 100) @NoInjection
     private String policyId;
 
-    @NotBlank @Size(max = 45)
+    @NotBlank @Size(max = 45) @ValidIpAddress
     private String clientIp;
 
-    @NotBlank @Size(max = 255)
+    @NotBlank @Size(max = 255) @NoInjection
     private String hostname;
 
-    @NotBlank @Size(max = 2048)
+    @NotBlank @Size(max = 2048) @NoInjection
     private String path;
 
-    @NotBlank @Size(max = 10)
+    @NotBlank @Size(max = 10) @ValidHttpMethod
     private String method;
 
-    @NotNull
+    @NotNull @ValidStatusCode
     private Integer statusCode;
 
-    @NotBlank @Size(max = 512)
+    @NotBlank @Size(max = 512) @NoInjection
     private String userAgent;
 
     // @Valid cascades validation into RuleRequest fields

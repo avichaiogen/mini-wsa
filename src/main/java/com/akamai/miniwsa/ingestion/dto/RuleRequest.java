@@ -2,6 +2,7 @@ package com.akamai.miniwsa.ingestion.dto;
 
 import com.akamai.miniwsa.domain.RuleCategory;
 import com.akamai.miniwsa.domain.Severity;
+import com.akamai.miniwsa.validation.NoInjection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,13 +19,13 @@ import lombok.Setter;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class RuleRequest {
 
-    @NotBlank @Size(max = 50)
+    @NotBlank @Size(max = 50) @NoInjection
     private String id;
 
-    @NotBlank @Size(max = 200)
+    @NotBlank @Size(max = 200) @NoInjection
     private String name;
 
-    @NotBlank @Size(max = 500)
+    @NotBlank @Size(max = 500) @NoInjection
     private String message;
 
     // Only CRITICAL/HIGH/MEDIUM/LOW accepted — unknown values → 400 via Jackson
