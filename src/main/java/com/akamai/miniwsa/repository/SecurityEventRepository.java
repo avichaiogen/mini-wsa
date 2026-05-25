@@ -1,5 +1,7 @@
 package com.akamai.miniwsa.repository;
 
+import com.akamai.miniwsa.domain.Action;
+import com.akamai.miniwsa.domain.RuleCategory;
 import com.akamai.miniwsa.domain.SecurityEvent;
 import com.akamai.miniwsa.stats.dto.ActionRow;
 import com.akamai.miniwsa.stats.dto.AttackerRow;
@@ -69,4 +71,30 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, Lo
                                    @Param("from") Instant from,
                                    @Param("to") Instant to,
                                    Pageable pageable);
+
+    @Query("SELECT e FROM SecurityEvent e WHERE " +
+           "(:configId IS NULL OR e.configId = :configId) AND " +
+           "(cast(:from as instant) IS NULL OR e.receivedAt >= :from) AND " +
+           "(cast(:to as instant) IS NULL OR e.receivedAt <= :to) AND " +
+           "(cast(:category as string) IS NULL OR e.rule.category = :category) AND " +
+           "(cast(:action as string) IS NULL OR e.action = :action) " +
+           "ORDER BY e.timestamp DESC")
+    List<SecurityEvent> findSamples(@Param("configId") Long configId,
+                                    @Param("from") Instant from,
+                                    @Param("to") Instant to,
+                                    @Param("category") RuleCategory category,
+                                    @Param("action") Action action,
+                                    Pageable pageable);
+
+    @Query("SELECT COUNT(e) FROM SecurityEvent e WHERE " +
+           "(:configId IS NULL OR e.configId = :configId) AND " +
+           "(cast(:from as instant) IS NULL OR e.receivedAt >= :from) AND " +
+           "(cast(:to as instant) IS NULL OR e.receivedAt <= :to) AND " +
+           "(cast(:category as string) IS NULL OR e.rule.category = :category) AND " +
+           "(cast(:action as string) IS NULL OR e.action = :action)")
+    long countSamples(@Param("configId") Long configId,
+                      @Param("from") Instant from,
+                      @Param("to") Instant to,
+                      @Param("category") RuleCategory category,
+                      @Param("action") Action action);
 }
