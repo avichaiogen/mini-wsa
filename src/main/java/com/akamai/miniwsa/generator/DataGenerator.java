@@ -159,7 +159,7 @@ public class DataGenerator {
 
         // Assign zero-padded sequential IDs in final list order
         for (int i = 0; i < events.size(); i++) {
-            events.get(i).setEventId(String.format("evt-%06d", i + 1));
+            events.get(i).setEventId(String.format("evt-%05d", i + 1));
         }
         return events;
     }
