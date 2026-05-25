@@ -3,6 +3,8 @@ package com.akamai.miniwsa.ingestion;
 import com.akamai.miniwsa.ingestion.dto.EventRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,11 +24,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IngestionController {
 
+    private static final Logger log = LoggerFactory.getLogger(IngestionController.class);
+
     private final IngestionService ingestionService;
 
     @PostMapping("/ingest")
     @ResponseStatus(HttpStatus.CREATED)
     public void ingest(@Valid @RequestBody List<EventRequest> events) {
+        log.info("POST /v1/events/ingest: batch size={}", events.size());
         ingestionService.ingest(events);
     }
 }

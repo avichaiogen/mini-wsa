@@ -12,6 +12,8 @@ import com.akamai.miniwsa.exception.InvalidRuleException;
 import com.akamai.miniwsa.ingestion.dto.EventRequest;
 import com.akamai.miniwsa.repository.SecurityEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,16 +38,20 @@ import java.util.List;
 @Transactional
 public class IngestionService {
 
+    private static final Logger log = LoggerFactory.getLogger(IngestionService.class);
+
     private final SecurityEventRepository repository;
     private final AttackClassifier attackClassifier;
     private final ThreatScoreEngine threatScoreEngine;
 
     public void ingest(List<EventRequest> requests) {
+        log.info("Ingesting batch: count={}", requests.size());
         List<SecurityEvent> events = requests.stream()
                 .map(this::toEntity)
                 .toList();
         try {
             repository.saveAll(events);
+            log.info("Batch persisted: count={}", events.size());
         } catch (DataAccessException ex) {
             throw new IngestionBatchException("Failed to persist event batch", ex);
         }
@@ -99,6 +105,9 @@ public class IngestionService {
         Instant windowStart = Instant.now().minus(10, ChronoUnit.MINUTES);
         long priorCount = repository.countByClientIpAndReceivedAtGreaterThanEqual(req.getClientIp(), windowStart);
         event.setThreatScore(threatScoreEngine.compute(req, priorCount));
+
+        log.debug("Enriched event: eventId={}, attackType={}, threatScore={}",
+                event.getEventId(), event.getAttackType(), event.getThreatScore());
 
         return event;
     }

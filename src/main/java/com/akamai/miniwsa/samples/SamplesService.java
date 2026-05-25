@@ -8,6 +8,8 @@ import com.akamai.miniwsa.samples.dto.GeoLocationResponse;
 import com.akamai.miniwsa.samples.dto.RuleResponse;
 import com.akamai.miniwsa.samples.dto.SamplesResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SamplesService {
 
+    private static final Logger log = LoggerFactory.getLogger(SamplesService.class);
+
     static final int MAX_LIMIT = 100;
 
     private final SecurityEventRepository repository;
@@ -30,6 +34,9 @@ public class SamplesService {
         int effectiveLimit  = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int effectiveOffset = Math.max(offset, 0);
         var pageable = PageRequest.of(effectiveOffset / effectiveLimit, effectiveLimit);
+
+        log.debug("Samples query: configId={}, from={}, to={}, category={}, action={}, limit={}, offset={}",
+                configId, from, to, category, action, effectiveLimit, effectiveOffset);
 
         long total = repository.countSamples(configId, from, to, category, action);
         List<EventResponse> events = repository
@@ -63,6 +70,7 @@ public class SamplesService {
                         e.getThreatScore()))
                 .toList();
 
+        log.debug("Samples result: total={}, returned={}", total, events.size());
         return new SamplesResponse(total, effectiveLimit, effectiveOffset, events);
     }
 }

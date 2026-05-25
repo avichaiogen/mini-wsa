@@ -1,6 +1,8 @@
 package com.akamai.miniwsa.enrichment;
 
 import com.akamai.miniwsa.domain.RuleCategory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,8 +12,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class AttackClassifier {
 
+    private static final Logger log = LoggerFactory.getLogger(AttackClassifier.class);
+
     public String classify(RuleCategory category) {
-        return switch (category) {
+        String attackType = switch (category) {
             case INJECTION          -> "SQL/Command Injection";
             case XSS                -> "Cross-Site Scripting";
             case PROTOCOL_VIOLATION -> "Protocol Anomaly";
@@ -20,5 +24,7 @@ public class AttackClassifier {
             case DOS                -> "Denial of Service";
             case RATE_LIMIT         -> "Rate Limiting";
         };
+        log.debug("Classified category={} -> attackType={}", category, attackType);
+        return attackType;
     }
 }

@@ -7,6 +7,8 @@ import com.akamai.miniwsa.stats.dto.PathStats;
 import com.akamai.miniwsa.stats.dto.StatsSummaryResponse;
 import com.akamai.miniwsa.stats.dto.TimeRange;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class StatsService {
 
+    private static final Logger log = LoggerFactory.getLogger(StatsService.class);
+
     private static final int TOP_N = 10;
 
     private final SecurityEventRepository repository;
@@ -27,7 +31,11 @@ public class StatsService {
     public StatsSummaryResponse getSummary(Long configId, Instant from, Instant to) {
         var pageable = PageRequest.of(0, TOP_N);
 
+        log.debug("Stats query: configId={}, from={}, to={}", configId, from, to);
+
         long total = repository.countFiltered(configId, from, to);
+
+        log.debug("Stats result: total={}", total);
 
         var byCategory = repository.countByCategory(configId, from, to).stream()
                 .collect(Collectors.toMap(
