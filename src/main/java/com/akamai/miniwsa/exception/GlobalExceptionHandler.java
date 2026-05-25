@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -40,6 +41,21 @@ public class GlobalExceptionHandler {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
         log.warn("Validation failed: {}", details);
+        return Map.of("error", "Validation failed", "details", details);
+    }
+
+    /**
+     * Handles constraint violations on @RequestParam / @PathVariable (Spring Boot 4 / Spring 6.1+).
+     * MethodArgumentNotValidException only fires for @RequestBody; method-level params throw this.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, Object> handleMethodValidation(HandlerMethodValidationException ex) {
+        List<String> details = ex.getParameterValidationResults().stream()
+                .flatMap(r -> r.getResolvableErrors().stream()
+                        .map(e -> r.getMethodParameter().getParameterName() + ": " + e.getDefaultMessage()))
+                .toList();
+        log.warn("Method validation failed: {}", details);
         return Map.of("error", "Validation failed", "details", details);
     }
 
