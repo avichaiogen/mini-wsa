@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 
-import org.springframework.dao.DataAccessException;
+import com.akamai.miniwsa.exception.IngestionBatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -149,7 +149,8 @@ class IngestionServiceTest {
         when(repository.saveAll(any())).thenThrow(new DataIntegrityViolationException("DB error"));
 
         assertThatThrownBy(() -> service.ingest(List.of(buildRequest())))
-                .isInstanceOf(DataAccessException.class);
+                .isInstanceOf(IngestionBatchException.class)
+                .hasMessageContaining("Failed to persist event batch");
     }
 
     @Test

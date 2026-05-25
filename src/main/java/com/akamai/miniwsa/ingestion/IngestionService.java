@@ -5,9 +5,14 @@ import com.akamai.miniwsa.domain.Rule;
 import com.akamai.miniwsa.domain.SecurityEvent;
 import com.akamai.miniwsa.enrichment.AttackClassifier;
 import com.akamai.miniwsa.enrichment.ThreatScoreEngine;
+import com.akamai.miniwsa.exception.IngestionBatchException;
+import com.akamai.miniwsa.exception.InvalidActionException;
+import com.akamai.miniwsa.exception.InvalidGeoLocationException;
+import com.akamai.miniwsa.exception.InvalidRuleException;
 import com.akamai.miniwsa.ingestion.dto.EventRequest;
 import com.akamai.miniwsa.repository.SecurityEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,11 +44,22 @@ public class IngestionService {
         List<SecurityEvent> events = requests.stream()
                 .map(this::toEntity)
                 .toList();
-        repository.saveAll(events);
+        try {
+            repository.saveAll(events);
+        } catch (DataAccessException ex) {
+            throw new IngestionBatchException("Failed to persist event batch", ex);
+        }
     }
 
     /** Maps a validated DTO to a fully-enriched entity ready for persistence. */
     private SecurityEvent toEntity(EventRequest req) {
+        if (req.getRule() == null)
+            throw new InvalidRuleException("rule", "Rule is required");
+        if (req.getAction() == null)
+            throw new InvalidActionException("action", "Action is required");
+        if (req.getGeoLocation() == null)
+            throw new InvalidGeoLocationException("geoLocation", "GeoLocation is required");
+
         SecurityEvent event = new SecurityEvent();
 
         event.setEventId(req.getEventId());
