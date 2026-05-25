@@ -9,10 +9,11 @@ Akamai's Web Security Analytics platform.
 ## Table of Contents
 1. [Build & Run](#build--run)
 2. [API Documentation](#api-documentation)
-3. [Architecture & Technology](#architecture--technology)
-4. [Testing](#testing)
-5. [Feature Deep Dive](#feature-deep-dive)
-6. [Tool Installation](#tool-installation)
+3. [Data Generator](#data-generator)
+4. [Architecture & Technology](#architecture--technology)
+5. [Testing](#testing)
+6. [Feature Deep Dive](#feature-deep-dive)
+7. [Tool Installation](#tool-installation)
 
 ---
 
@@ -233,6 +234,98 @@ curl "http://localhost:8080/v1/events/samples?category=INJECTION&action=DENY&lim
 
 Response includes a `total` field for building pagination UI.
 Results sorted by `timestamp` descending (newest first).
+
+---
+
+## Data Generator
+
+A standalone tool (no Spring context required) that generates realistic synthetic security events
+and optionally POSTs them to the ingestion API. Useful for populating a fresh database, load
+testing, or sharing a reproducible dataset with teammates.
+
+### Arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--count=N` | `1000` | Total number of events to generate |
+| `--batch-size=N` | `100` | Events per output JSON file |
+| `--output-dir=DIR` | `generated-events` | Directory to write files into |
+| `--waves=N` | `3` | Attack waves — bursts of events sharing a fixed IP, path, and configId |
+| `--wave-size=N` | `10` | Events per wave |
+| `--ingest=URL` | *(none)* | Base URL of a running server; when set, each file is POSTed to `POST /v1/events/ingest` |
+
+### How to run
+
+Build the project first if you haven't already:
+```bash
+mvn clean package -DskipTests
+```
+
+Then run via Maven's exec plugin:
+```bash
+mvn exec:java -Dexec.args="<args>"
+```
+
+> **Important:** Without `--ingest`, files are written to disk only — nothing is sent to the
+> database. Always include `--ingest=<url>` when you want data in the DB.
+> `--ingest` only POSTs the files created in the **current run** — files from previous runs
+> that already exist in the output directory are not re-ingested.
+
+### Examples
+
+**Generate 500 events to disk (inspect files before ingesting):**
+```bash
+mvn exec:java -Dexec.args="--count=500"
+```
+
+**Generate 1000 events and ingest to a local server:**
+```bash
+mvn exec:java -Dexec.args="--count=1000 --ingest=http://localhost:8080"
+```
+
+**Custom batch size and output directory:**
+```bash
+mvn exec:java -Dexec.args="--count=2000 --batch-size=200 --output-dir=my-events --ingest=http://localhost:8080"
+```
+
+**Simulate attack waves (5 waves of 20 events each, then random fill to 500):**
+```bash
+mvn exec:java -Dexec.args="--count=500 --waves=5 --wave-size=20 --ingest=http://localhost:8080"
+```
+
+### Output
+
+The generator always prints a per-configId statistics table before writing any files:
+
+```
+=== Data Generator Statistics ===
+Total events generated: 1000
+
+ConfigId   | Count | Min Timestamp        | Max Timestamp        | Severity Distribution                    | Top Action
+-------------------------------------------------------------------------------------------------------------------
+5512       |   198 | 2020-03-12T08:41:00Z | 2026-04-22T17:03:00Z | CRIT:48   HIGH:51   MED:52   LOW:47   | DENY(71)
+8801       |   201 | 2020-07-04T11:22:00Z | 2026-05-01T09:14:00Z | CRIT:52   HIGH:49   MED:53   LOW:47   | ALERT(68)
+...
+
+Generated 1000 events → generated-events/ (10 files of up to 100 each)
+```
+
+When `--ingest` is specified, each file is POSTed and results are shown individually, followed
+by a summary line:
+
+```
+Ingesting 10 files to http://localhost:8080 …
+  [OK  ] events_000.json → 201
+  [OK  ] events_001.json → 201
+  [FAIL] events_002.json → 400
+Ingested: 9 OK, 1 FAILED
+```
+
+### File format
+
+Output files are named `events_NNN.json` (3-digit zero-padded index, e.g. `events_000.json`,
+`events_001.json`). Repeated runs append new files — existing files are never overwritten. Each
+file contains a JSON array ready to POST directly to `POST /v1/events/ingest`.
 
 ---
 
