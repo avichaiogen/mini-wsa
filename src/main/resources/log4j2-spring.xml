@@ -4,10 +4,26 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
+        <!-- Rolling file: 100 MB per file, daily rollover, 30 files max, gzip compressed.
+             File path and log level are read from application.yml via ${spring:...} lookups
+             so they can be changed without touching this file. -->
+        <RollingFile name="RollingFile"
+                     fileName="${spring:logging.file.name:-logs/mini-wsa.log}"
+                     filePattern="${spring:logging.file.name:-logs/mini-wsa.log}.%d{yyyy-MM-dd}.%i.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
     </Appenders>
     <Loggers>
-        <Logger name="com.akamai.miniwsa" level="DEBUG" additivity="false">
+        <Logger name="com.akamai.miniwsa"
+                level="${spring:logging.level.com.akamai.miniwsa:-INFO}"
+                additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Logger>
         <Root level="INFO">
             <AppenderRef ref="Console"/>

@@ -37,3 +37,9 @@ spring:
 
 server:
   port: 8080
+
+logging:
+  level:
+    com.akamai.miniwsa: INFO  # change here to DEBUG/WARN; never edit log4j2-spring.xml for routine config
+  file:
+    name: logs/mini-wsa.log
