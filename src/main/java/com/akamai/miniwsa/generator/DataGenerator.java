@@ -11,6 +11,11 @@ import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -20,9 +25,12 @@ import java.util.*;
  *
  * Usage:
  *   mvn exec:java -Dexec.args="--count=1000 --batch-size=100 --waves=3 --wave-size=10"
+ *   mvn exec:java -Dexec.args="--count=500 --ingest=http://localhost:8080"
  *
  * Outputs numbered JSON batch files (events_000.json, events_001.json, …) into
- * the output directory, each containing a JSON array ready for POST /v1/events/ingest.
+ * the output directory. Repeated runs append new files — existing files are never
+ * overwritten. Pass --ingest=<baseUrl> to also POST each newly written file to
+ * the ingestion endpoint.
  */
 public class DataGenerator {
 
@@ -75,11 +83,12 @@ public class DataGenerator {
     // --- Entry point ---
 
     public static void main(String[] args) throws Exception {
-        int count     = 1000;
-        String outDir = "generated-events";
-        int batchSize = 100;
-        int waves     = 3;
-        int waveSize  = 10;
+        int count      = 1000;
+        String outDir  = "generated-events";
+        int batchSize  = 100;
+        int waves      = 3;
+        int waveSize   = 10;
+        String ingestUrl = null;
 
         for (String arg : args) {
             if      (arg.startsWith("--count="))       count     = Integer.parseInt(arg.substring(8));
@@ -87,6 +96,7 @@ public class DataGenerator {
             else if (arg.startsWith("--batch-size="))  batchSize = Integer.parseInt(arg.substring(13));
             else if (arg.startsWith("--waves="))       waves     = Integer.parseInt(arg.substring(8));
             else if (arg.startsWith("--wave-size="))   waveSize  = Integer.parseInt(arg.substring(12));
+            else if (arg.startsWith("--ingest="))      ingestUrl = arg.substring(9);
         }
 
         List<EventRequest> events = generate(count, waves, waveSize);
@@ -95,11 +105,16 @@ public class DataGenerator {
                 .configure(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS, false)
                 .build();
 
-        writeBatches(events, outDir, batchSize, mapper);
+        List<File> written = writeBatches(events, outDir, batchSize, mapper);
 
-        int fileCount = (events.size() + batchSize - 1) / batchSize;
         System.out.printf("Generated %d events → %s/ (%d file%s of up to %d each)%n",
-                events.size(), outDir, fileCount, fileCount == 1 ? "" : "s", batchSize);
+                events.size(), outDir, written.size(), written.size() == 1 ? "" : "s", batchSize);
+
+        if (ingestUrl != null) {
+            System.out.printf("Ingesting %d file%s to %s …%n",
+                    written.size(), written.size() == 1 ? "" : "s", ingestUrl);
+            ingestFiles(written, ingestUrl);
+        }
     }
 
     // --- Core generation (no I/O — fully testable) ---
@@ -132,14 +147,47 @@ public class DataGenerator {
 
     // --- Batch file writer ---
 
-    static void writeBatches(List<EventRequest> events, String outputDir,
-                             int batchSize, ObjectMapper mapper) throws Exception {
-        new File(outputDir).mkdirs();
-        int fileIndex = 0;
+    static List<File> writeBatches(List<EventRequest> events, String outputDir,
+                                   int batchSize, ObjectMapper mapper) throws Exception {
+        File dir = new File(outputDir);
+        dir.mkdirs();
+        int fileIndex = nextFileIndex(dir);
+        List<File> written = new ArrayList<>();
         for (int start = 0; start < events.size(); start += batchSize) {
             List<EventRequest> batch = events.subList(start, Math.min(start + batchSize, events.size()));
-            mapper.writeValue(new File(outputDir, String.format("events_%03d.json", fileIndex++)), batch);
+            File out = new File(dir, String.format("events_%03d.json", fileIndex++));
+            mapper.writeValue(out, batch);
+            written.add(out);
         }
+        return written;
+    }
+
+    // --- Ingest written files ---
+
+    static void ingestFiles(List<File> files, String baseUrl) throws Exception {
+        HttpClient http = HttpClient.newHttpClient();
+        String url = baseUrl + "/v1/events/ingest";
+        for (File file : files) {
+            String body = Files.readString(file.toPath());
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            System.out.printf("  [%s] %s → %d%n",
+                    res.statusCode() == 201 ? "OK  " : "FAIL", file.getName(), res.statusCode());
+        }
+    }
+
+    // --- File index helper ---
+
+    static int nextFileIndex(File dir) {
+        File[] existing = dir.listFiles((d, name) -> name.matches("events_\\d{3}\\.json"));
+        if (existing == null || existing.length == 0) return 0;
+        return Arrays.stream(existing)
+                .mapToInt(f -> Integer.parseInt(f.getName().substring(7, 10)))
+                .max().orElse(-1) + 1;
     }
 
     // --- Private builders ---
