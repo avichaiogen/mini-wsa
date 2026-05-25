@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -79,7 +80,9 @@ public class IngestionService {
 
         // Enrichment
         event.setAttackType(attackClassifier.classify(req.getRule().getCategory()));
-        event.setThreatScore(threatScoreEngine.compute(req));
+        Instant windowStart = Instant.now().minus(10, ChronoUnit.MINUTES);
+        long priorCount = repository.countByClientIpAndReceivedAtGreaterThanEqual(req.getClientIp(), windowStart);
+        event.setThreatScore(threatScoreEngine.compute(req, priorCount));
 
         return event;
     }
