@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,17 @@ public class GlobalExceptionHandler {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
         return Map.of("error", "Validation failed", "details", details);
+    }
+
+    /**
+     * Handles @RequestParam type mismatches (e.g. configId=abc when Long is expected, or
+     * an unparseable ISO-8601 date). Returns 400 instead of the default 500.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.debug("Type mismatch: {}", ex.getMessage());
+        return Map.of("error", "Invalid parameter format");
     }
 
     /**
