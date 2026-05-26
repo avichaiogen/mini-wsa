@@ -1,32 +1,14 @@
 package com.akamai.miniwsa.samples;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.akamai.miniwsa.AbstractControllerIT;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class SamplesControllerIT {
-
-    @Autowired
-    private WebApplicationContext wac;
-
-    private MockMvc mockMvc;
-
-    @BeforeEach
-    void setup() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
-    }
+class SamplesControllerIT extends AbstractControllerIT {
 
     // configId 99998 is never used in any other test — ensures a zero-result query
     private static final long UNUSED_CONFIG_ID = 99998L;
