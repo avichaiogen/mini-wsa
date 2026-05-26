@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -53,7 +54,12 @@ public class GlobalExceptionHandler {
     public Map<String, Object> handleMethodValidation(HandlerMethodValidationException ex) {
         List<String> details = ex.getParameterValidationResults().stream()
                 .flatMap(r -> r.getResolvableErrors().stream()
-                        .map(e -> r.getMethodParameter().getParameterName() + ": " + e.getDefaultMessage()))
+                        .map(e -> {
+                            if (e instanceof FieldError fe) {
+                                return fe.getField() + ": " + fe.getDefaultMessage();
+                            }
+                            return r.getMethodParameter().getParameterName() + ": " + e.getDefaultMessage();
+                        }))
                 .toList();
         log.warn("Method validation failed: {}", details);
         return Map.of("error", "Validation failed", "details", details);
