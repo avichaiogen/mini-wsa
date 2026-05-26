@@ -4,9 +4,9 @@ import com.akamai.miniwsa.domain.Action;
 import com.akamai.miniwsa.domain.RuleCategory;
 import com.akamai.miniwsa.repository.SecurityEventRepository;
 import com.akamai.miniwsa.stats.dto.ActionRow;
-import com.akamai.miniwsa.stats.dto.AttackerRow;
+import com.akamai.miniwsa.stats.dto.AttackerStats;
 import com.akamai.miniwsa.stats.dto.CategoryRow;
-import com.akamai.miniwsa.stats.dto.PathRow;
+import com.akamai.miniwsa.stats.dto.PathStats;
 import com.akamai.miniwsa.stats.dto.StatsSummaryResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,9 +49,9 @@ class StatsServiceTest {
         when(repository.countByAction(eq(configId), eq(from), eq(to))).thenReturn(List.of(
                 new ActionRow(Action.DENY, 890)));
         when(repository.topAttackers(eq(configId), eq(from), eq(to), any(Pageable.class))).thenReturn(List.of(
-                new AttackerRow("203.0.113.42", 87, 81.2)));
+                new AttackerStats("203.0.113.42", 87, 81.2)));
         when(repository.topTargetedPaths(eq(configId), eq(from), eq(to), any(Pageable.class))).thenReturn(List.of(
-                new PathRow("/api/v1/login", 234)));
+                new PathStats("/api/v1/login", 234)));
 
         StatsSummaryResponse result = statsService.getSummary(configId, from, to);
 
@@ -155,8 +155,8 @@ class StatsServiceTest {
 
     @Test
     void getSummary_exactly10Attackers_allReturned() {
-        List<AttackerRow> ten = java.util.stream.IntStream.rangeClosed(1, 10)
-                .mapToObj(i -> new AttackerRow("10.0.0." + i, i, 50.0))
+        List<AttackerStats> ten = java.util.stream.IntStream.rangeClosed(1, 10)
+                .mapToObj(i -> new AttackerStats("10.0.0." + i, i, 50.0))
                 .toList();
         when(repository.countFiltered(any(), any(), any())).thenReturn(10L);
         when(repository.countByCategory(any(), any(), any())).thenReturn(List.of());

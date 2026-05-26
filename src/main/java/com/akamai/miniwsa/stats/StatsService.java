@@ -45,13 +45,9 @@ public class StatsService {
                         r -> r.action(),
                         r -> r.count()));
 
-        List<AttackerStats> topAttackers = repository.topAttackers(configId, from, to, pageable).stream()
-                .map(r -> new AttackerStats(r.clientIp(), r.count(), r.avgThreatScore()))
-                .toList();
+        List<AttackerStats> topAttackers = repository.topAttackers(configId, from, to, pageable);
 
-        List<PathStats> topPaths = repository.topTargetedPaths(configId, from, to, pageable).stream()
-                .map(r -> new PathStats(r.path(), r.count()))
-                .toList();
+        List<PathStats> topPaths = repository.topTargetedPaths(configId, from, to, pageable);
 
         log.debug("Stats result: total={}, categories={}, topAttackers={}, topPaths={}",
                 total, byCategory.size(), topAttackers.size(), topPaths.size());

@@ -4,9 +4,9 @@ import com.akamai.miniwsa.domain.Action;
 import com.akamai.miniwsa.domain.RuleCategory;
 import com.akamai.miniwsa.domain.SecurityEvent;
 import com.akamai.miniwsa.stats.dto.ActionRow;
-import com.akamai.miniwsa.stats.dto.AttackerRow;
+import com.akamai.miniwsa.stats.dto.AttackerStats;
 import com.akamai.miniwsa.stats.dto.CategoryRow;
-import com.akamai.miniwsa.stats.dto.PathRow;
+import com.akamai.miniwsa.stats.dto.PathStats;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -50,27 +50,27 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, Lo
                                   @Param("from") Instant from,
                                   @Param("to") Instant to);
 
-    @Query("SELECT new com.akamai.miniwsa.stats.dto.AttackerRow(e.clientIp, COUNT(e), AVG(e.threatScore)) " +
+    @Query("SELECT new com.akamai.miniwsa.stats.dto.AttackerStats(e.clientIp, COUNT(e), AVG(e.threatScore)) " +
            "FROM SecurityEvent e WHERE " +
            "(:configId IS NULL OR e.configId = :configId) AND " +
            "(cast(:from as instant) IS NULL OR e.receivedAt >= :from) AND " +
            "(cast(:to as instant) IS NULL OR e.receivedAt <= :to) " +
            "GROUP BY e.clientIp ORDER BY COUNT(e) DESC")
-    List<AttackerRow> topAttackers(@Param("configId") Long configId,
-                                   @Param("from") Instant from,
-                                   @Param("to") Instant to,
-                                   Pageable pageable);
+    List<AttackerStats> topAttackers(@Param("configId") Long configId,
+                                     @Param("from") Instant from,
+                                     @Param("to") Instant to,
+                                     Pageable pageable);
 
-    @Query("SELECT new com.akamai.miniwsa.stats.dto.PathRow(e.path, COUNT(e)) " +
+    @Query("SELECT new com.akamai.miniwsa.stats.dto.PathStats(e.path, COUNT(e)) " +
            "FROM SecurityEvent e WHERE " +
            "(:configId IS NULL OR e.configId = :configId) AND " +
            "(cast(:from as instant) IS NULL OR e.receivedAt >= :from) AND " +
            "(cast(:to as instant) IS NULL OR e.receivedAt <= :to) " +
            "GROUP BY e.path ORDER BY COUNT(e) DESC")
-    List<PathRow> topTargetedPaths(@Param("configId") Long configId,
-                                   @Param("from") Instant from,
-                                   @Param("to") Instant to,
-                                   Pageable pageable);
+    List<PathStats> topTargetedPaths(@Param("configId") Long configId,
+                                     @Param("from") Instant from,
+                                     @Param("to") Instant to,
+                                     Pageable pageable);
 
     @Query("SELECT e FROM SecurityEvent e WHERE " +
            "(:configId IS NULL OR e.configId = :configId) AND " +
