@@ -44,42 +44,6 @@ git clone https://github.com/avichaiogen/mini-wsa.git
 cd mini-wsa
 ```
 
-Copy the `.env.example` template and fill in your credentials:
-
-```bash
-cp .env.example .env
-# open .env and set DB_USERNAME and DB_PASSWORD
-```
-
-| Variable | Default value | Purpose |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/miniwsa` | JDBC connection string |
-| `DB_USERNAME` | `miniwsa` | PostgreSQL login |
-| `DB_PASSWORD` | `miniwsa` | PostgreSQL password |
-
-> **Important:** The `DB_USERNAME` and `DB_PASSWORD` values in `.env` **must exactly match** the username and password you use when creating the database in Step 3. If you follow the example commands in Step 3 unchanged, the defaults already match — no edits needed.
-
-Then export the variables:
-
-**Linux / macOS:**
-```bash
-set -a; source .env; set +a
-```
-
-**Windows CMD:**
-```cmd
-for /f "tokens=1,2 delims==" %i in (.env) do set %i=%j
-```
-
-**Windows PowerShell:**
-```powershell
-Get-Content .env | ForEach-Object { $k,$v = $_ -split '=',2; [System.Environment]::SetEnvironmentVariable($k,$v) }
-```
-
-> **Note:** `set -a; source .env; set +a` (or the Windows equivalent) only applies to the current terminal session.
-> Re-run it if you open a new terminal. Alternatively, set the variables permanently in your OS
-> environment (System Properties → Environment Variables on Windows; `/etc/environment` on Linux).
-
 ### Step 2 — Start PostgreSQL
 
 **Linux (systemd-based distros — Ubuntu, Debian, Fedora):**
@@ -103,7 +67,7 @@ Start-Service -Name postgresql-x64-<version>
 
 ### Step 3 — Create the database (first time only)
 
-> **Important:** Use the same username and password here as in your `.env` file (set in Step 1). The commands below use `miniwsa` / `miniwsa` as an example — replace them with your chosen credentials if different.
+The commands below use `miniwsa` / `miniwsa` as the username and password. Replace them with your chosen credentials if different — you will set the same values in `.env` in the next step.
 
 **Linux:**
 ```bash
@@ -131,41 +95,79 @@ psql -U postgres -d miniwsa -c "GRANT ALL ON SCHEMA public TO miniwsa;"
 
 > **Why the last command?** PostgreSQL 15+ revoked the default CREATE privilege on the `public` schema. Without it, Flyway cannot create its schema history table and the app will fail to start. The `-d miniwsa` flag is required — this grant must run against the app database, not the default `postgres` database.
 
-### Step 4 — Build
+### Step 4 — Configure environment
+
+Copy the `.env.example` template and fill in the credentials you chose in Step 3:
+
 ```bash
-mvn clean package -DskipTests
+cp .env.example .env
+# open .env and set DB_USERNAME and DB_PASSWORD to match Step 3
 ```
 
-### Step 5 — Test
+| Variable | Default value | Purpose |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/miniwsa` | JDBC connection string |
+| `DB_USERNAME` | `miniwsa` | PostgreSQL login |
+| `DB_PASSWORD` | `miniwsa` | PostgreSQL password |
+
+If you used the example commands in Step 3 unchanged, the defaults already match — no edits needed.
+
+Then export the variables:
+
+**Linux / macOS:**
 ```bash
-mvn test
+set -a; source .env; set +a
 ```
 
-Make sure all tests pass before running the app.
-
-### Step 6 — Run
-```bash
-java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
+**Windows CMD:**
+```cmd
+for /f "tokens=1,2 delims==" %i in (.env) do set %i=%j
 ```
 
-The app starts on `http://localhost:8080`.
+**Windows PowerShell:**
+```powershell
+Get-Content .env | ForEach-Object { $k,$v = $_ -split '=',2; [System.Environment]::SetEnvironmentVariable($k,$v) }
+```
 
-> **Note:** If you restart your terminal, run `set -a; source .env; set +a` again before starting the app.
+#### Override DB credentials without editing files
 
-### Override DB credentials without editing files
+To connect to a different database without touching `.env`:
 
 **Linux / macOS:**
 ```bash
 DB_URL=jdbc:postgresql://myhost:5432/mydb \
 DB_USERNAME=myuser \
 DB_PASSWORD=mypass \
-java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
+java -jar target/mini-wsa.jar
 ```
 
 **Windows PowerShell:**
 ```powershell
-$env:DB_URL="jdbc:postgresql://myhost:5432/mydb"; $env:DB_USERNAME="myuser"; $env:DB_PASSWORD="mypass"; java -jar target/mini-wsa-0.0.1-SNAPSHOT.jar
+$env:DB_URL="jdbc:postgresql://myhost:5432/mydb"; $env:DB_USERNAME="myuser"; $env:DB_PASSWORD="mypass"; java -jar target/mini-wsa.jar
 ```
+
+### Step 5 — Build
+```bash
+mvn clean package -DskipTests
+```
+
+### Step 6 — Test
+```bash
+mvn test
+```
+
+Make sure all tests pass before running the app.
+
+### Step 7 — Run
+```bash
+java -jar target/mini-wsa.jar
+```
+
+The app starts on `http://localhost:8080`.
+
+> **Note:** `set -a; source .env; set +a` (or the Windows equivalent) only applies to the current terminal session.
+> Re-run it if you open a new terminal before starting the app. Alternatively, set the variables permanently in your OS
+> environment (System Properties → Environment Variables on Windows; `/etc/environment` on Linux).
 
 ---
 
@@ -209,34 +211,8 @@ curl -s -X POST http://localhost:8080/v1/events/ingest \
 
 **Single event (Windows PowerShell):**
 
-Use `` ` `` for line continuation and `\"` to escape inner double quotes inside the `-d` payload:
-
 ```powershell
-curl.exe -s -X POST http://localhost:8080/v1/events/ingest `
-  -H "Content-Type: application/json" `
-  -d "{
-    \"eventId\": \"evt-001\",
-    \"timestamp\": \"2026-05-20T14:32:10Z\",
-    \"configId\": 14227,
-    \"policyId\": \"pol_web1\",
-    \"clientIp\": \"203.0.113.42\",
-    \"hostname\": \"www.example.com\",
-    \"path\": \"/api/v1/login\",
-    \"method\": \"POST\",
-    \"statusCode\": 403,
-    \"userAgent\": \"Mozilla/5.0\",
-    \"rule\": {
-      \"id\": \"950001\",
-      \"name\": \"SQL_INJECTION\",
-      \"message\": \"SQL Injection Attack Detected\",
-      \"severity\": \"CRITICAL\",
-      \"category\": \"INJECTION\"
-    },
-    \"action\": \"DENY\",
-    \"geoLocation\": { \"country\": \"CN\", \"city\": \"Beijing\" },
-    \"requestSize\": 1024,
-    \"responseSize\": 256
-  }"
+curl.exe -s -X POST http://localhost:8080/v1/events/ingest -H "Content-Type: application/json" -d "{ \`"eventId\`": \`"evt-001\`", \`"timestamp\`": \`"2026-05-20T14:32:10Z\`", \`"configId\`": 14227, \`"policyId\`": \`"pol_web1\`", \`"clientIp\`": \`"203.0.113.42\`", \`"hostname\`": \`"www.example.com\`", \`"path\`": \`"/api/v1/login\`", \`"method\`": \`"POST\`", \`"statusCode\`": 403, \`"userAgent\`": \`"Mozilla/5.0\`", \`"rule\`": { \`"id\`": \`"950001\`", \`"name\`": \`"SQL_INJECTION\`", \`"message\`": \`"SQL Injection Attack Detected\`", \`"severity\`": \`"CRITICAL\`", \`"category\`": \`"INJECTION\`" }, \`"action\`": \`"DENY\`", \`"geoLocation\`": { \`"country\`": \`"CN\`", \`"city\`": \`"Beijing\`" }, \`"requestSize\`": 1024, \`"responseSize\`": 256 }"
 ```
 
 **Batch:**
@@ -325,7 +301,7 @@ testing, or sharing a reproducible dataset with teammates.
 
 ### How to run
 
-If you haven't built the project yet, complete Step 4 of Build & Run (`mvn clean package -DskipTests`) first.
+If you haven't built the project yet, run `mvn clean package -DskipTests` first.
 
 Run via Maven's exec plugin:
 ```bash
