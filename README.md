@@ -456,9 +456,26 @@ POST /v1/events/ingest
 | Logging | SLF4J + Log4j2 | Async appenders; decoupled facade |
 | Testing | JUnit 5 + Mockito + H2 | Unit tests with mocked repos; integration tests with in-memory DB |
 
-**Scaling path for production:**
-TimescaleDB (PostgreSQL extension) adds automatic time partitioning and continuous aggregates.
-Kafka in front of ingestion decouples write throughput. ClickHouse handles analytics at extreme scale.
+**Why PostgreSQL?**
+
+- **Fixed schema** — Every event has the same fields; MongoDB's document flexibility is a liability here, not an asset. A strict schema means the database itself rejects malformed events as a second line of defense after Bean Validation.
+
+- **SQL aggregations** — The stats API's `GROUP BY`, `COUNT`, and `AVG` queries are SQL's native strength — cleaner and more readable than MongoDB's equivalent multi-stage aggregation pipeline.
+
+- **ACID guarantees** *(Atomic, Consistent, Isolated, Durable)* — Atomicity makes all-or-nothing batch ingest a single `@Transactional` call; Isolation prevents the repeat-offender COUNT/insert race under concurrent requests from the same IP. Both require complex workarounds in MongoDB.
+
+- **Scaling path** — TimescaleDB (a drop-in PostgreSQL extension) adds time partitioning on `received_at` with no schema or code changes — the natural upgrade when data grows to hundreds of millions of rows. At big-data volumes: Kafka decouples write throughput and ClickHouse replaces the read path for columnar analytics across billions of events.
+
+## What I Would Improve With More Time
+
+- **Authentication & authorisation** — the ingest endpoint currently accepts events from any caller with no identity verification. In production, `POST /v1/events/ingest` should require an API key or JWT so only trusted sources can write data, and the read endpoints (`GET /v1/stats/summary`, `GET /v1/events/samples`) should be role-scoped to prevent unauthorised access to analytics data.
+- **`docker-compose.yml`** — a compose file bundling the app and PostgreSQL would reduce setup from a multi-step manual process to a single `docker compose up`, making it easier to run locally and in CI.
+
+---
+
+## What Was Challenging
+
+- **First project in Java, Spring Boot, and PostgreSQL** — this was my first end-to-end project using all three technologies together. Getting up to speed with Spring Boot's auto-configuration, JPA entity mapping, Flyway migrations, and PostgreSQL driver behaviour simultaneously — while designing a clean, working analytics pipeline — required significant learning investment and was the main challenge throughout the project.
 
 ---
 
