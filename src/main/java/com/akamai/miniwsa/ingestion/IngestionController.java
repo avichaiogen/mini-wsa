@@ -31,7 +31,7 @@ public class IngestionController {
     @PostMapping("/ingest")
     @ResponseStatus(HttpStatus.CREATED)
     public void ingest(@Valid @RequestBody List<EventRequest> events) {
-        log.info("POST /v1/events/ingest: batch size={}", events.size());
+        log.debug("Input validation passed: batchSize={}", events.size());
         ingestionService.ingest(events);
     }
 }

@@ -45,13 +45,13 @@ public class IngestionService {
     private final ThreatScoreEngine threatScoreEngine;
 
     public void ingest(List<EventRequest> requests) {
-        log.info("Ingesting batch: count={}", requests.size());
         List<SecurityEvent> events = requests.stream()
                 .map(this::toEntity)
                 .toList();
+        log.debug("Enrichment complete: {} event(s) scored", events.size());
         try {
             repository.saveAll(events);
-            log.info("Batch persisted: count={}", events.size());
+            log.info("Ingestion complete: {} event(s) stored", events.size());
         } catch (DataAccessException ex) {
             throw new IngestionBatchException("Failed to persist event batch", ex);
         }
@@ -106,8 +106,6 @@ public class IngestionService {
         long priorCount = repository.countByClientIpAndReceivedAtGreaterThanEqual(req.getClientIp(), windowStart);
         event.setThreatScore(threatScoreEngine.compute(req, priorCount));
 
-        log.debug("Enriched event: eventId={}, attackType={}, threatScore={}",
-                event.getEventId(), event.getAttackType(), event.getThreatScore());
 
         return event;
     }

@@ -70,7 +70,7 @@ public class SamplesService {
                         e.getThreatScore()))
                 .toList();
 
-        log.debug("Samples result: total={}, returned={}", total, events.size());
+        log.debug("Samples result: total={}, returned={}, page offset={}", total, events.size(), effectiveOffset);
         return new SamplesResponse(total, effectiveLimit, effectiveOffset, events);
     }
 }

@@ -4,6 +4,8 @@ import com.akamai.miniwsa.domain.Action;
 import com.akamai.miniwsa.domain.RuleCategory;
 import com.akamai.miniwsa.samples.dto.SamplesResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +21,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class SamplesController {
 
+    private static final Logger log = LoggerFactory.getLogger(SamplesController.class);
+
     private final SamplesService samplesService;
 
     @GetMapping("/samples")
@@ -32,6 +36,8 @@ public class SamplesController {
             @RequestParam(required = false) Action action,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset) {
+        log.info("Samples request: configId={}, category={}, action={}, limit={}, offset={}",
+                configId, category, action, limit, offset);
         return samplesService.getSamples(configId, from, to, category, action, limit, offset);
     }
 }

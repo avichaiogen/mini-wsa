@@ -2,6 +2,8 @@ package com.akamai.miniwsa.stats;
 
 import com.akamai.miniwsa.stats.dto.StatsSummaryResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class StatsController {
 
+    private static final Logger log = LoggerFactory.getLogger(StatsController.class);
+
     private final StatsService statsService;
 
     @GetMapping("/summary")
@@ -24,6 +28,7 @@ public class StatsController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        log.info("Stats summary request: configId={}, from={}, to={}", configId, from, to);
         return statsService.getSummary(configId, from, to);
     }
 }

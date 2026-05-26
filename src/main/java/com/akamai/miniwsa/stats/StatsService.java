@@ -35,8 +35,6 @@ public class StatsService {
 
         long total = repository.countFiltered(configId, from, to);
 
-        log.debug("Stats result: total={}", total);
-
         var byCategory = repository.countByCategory(configId, from, to).stream()
                 .collect(Collectors.toMap(
                         r -> r.category(),
@@ -54,6 +52,9 @@ public class StatsService {
         List<PathStats> topPaths = repository.topTargetedPaths(configId, from, to, pageable).stream()
                 .map(r -> new PathStats(r.path(), r.count()))
                 .toList();
+
+        log.debug("Stats result: total={}, categories={}, topAttackers={}, topPaths={}",
+                total, byCategory.size(), topAttackers.size(), topPaths.size());
 
         return new StatsSummaryResponse(
                 configId,
