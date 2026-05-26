@@ -102,7 +102,7 @@ public class IngestionService {
 
         // Enrichment
         event.setAttackType(attackClassifier.classify(req.getRule().getCategory()));
-        Instant windowStart = Instant.now().minus(10, ChronoUnit.MINUTES);
+        Instant windowStart = Instant.now().minus(ThreatScoreEngine.REPEAT_OFFENDER_WINDOW_MINUTES, ChronoUnit.MINUTES);
         long priorCount = repository.countByClientIpAndReceivedAtGreaterThanEqual(req.getClientIp(), windowStart);
         event.setThreatScore(threatScoreEngine.compute(req, priorCount));
 

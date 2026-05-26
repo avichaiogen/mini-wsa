@@ -23,32 +23,46 @@ public class ThreatScoreEngine {
 
     private static final int MAX_SCORE = 100;
 
+    private static final int SCORE_SEVERITY_CRITICAL  = 40;
+    private static final int SCORE_SEVERITY_HIGH      = 30;
+    private static final int SCORE_SEVERITY_MEDIUM    = 20;
+    private static final int SCORE_SEVERITY_LOW       = 10;
+
+    private static final int SCORE_ACTION_DENY        = 20;
+    private static final int SCORE_ACTION_ALERT       = 10;
+
+    private static final int BONUS_SENSITIVE_PATH     = 15;
+    private static final int BONUS_REPEAT_OFFENDER    = 15;
+    private static final int REPEAT_OFFENDER_THRESHOLD = 5;
+
+    public static final long REPEAT_OFFENDER_WINDOW_MINUTES = 10;
+
     public int compute(EventRequest req, long priorCount) {
         int score = 0;
 
         // Severity component
         score += switch (req.getRule().getSeverity()) {
-            case CRITICAL -> 40;
-            case HIGH     -> 30;
-            case MEDIUM   -> 20;
-            case LOW      -> 10;
+            case CRITICAL -> SCORE_SEVERITY_CRITICAL;
+            case HIGH     -> SCORE_SEVERITY_HIGH;
+            case MEDIUM   -> SCORE_SEVERITY_MEDIUM;
+            case LOW      -> SCORE_SEVERITY_LOW;
         };
 
         // Action component
         score += switch (req.getAction()) {
-            case DENY    -> 20;
-            case ALERT   -> 10;
+            case DENY    -> SCORE_ACTION_DENY;
+            case ALERT   -> SCORE_ACTION_ALERT;
             case MONITOR -> 0;
         };
 
         // Sensitive path bonus
         if (req.getPath().contains("/admin") || req.getPath().contains("/login")) {
-            score += 15;
+            score += BONUS_SENSITIVE_PATH;
         }
 
-        // Repeat-offender bonus: ≥5 prior events from same IP in last 10 min
-        if (priorCount >= 5) {
-            score += 15;
+        // Repeat-offender bonus: ≥ threshold prior events from same IP in last window
+        if (priorCount >= REPEAT_OFFENDER_THRESHOLD) {
+            score += BONUS_REPEAT_OFFENDER;
         }
 
         return Math.min(score, MAX_SCORE);
