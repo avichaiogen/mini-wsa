@@ -308,6 +308,13 @@ Run via Maven's exec plugin:
 mvn exec:java -Dexec.args="<args>"
 ```
 
+> **Windows (CMD & PowerShell):** Quote the *entire* `-D` argument to prevent the shell from
+> splitting it. Use double quotes around `-Dexec.args=<args>` instead of around just the value:
+> ```
+> mvn exec:java "-Dexec.args=--count=500"
+> mvn exec:java "-Dexec.args=--count=1000 --ingest=http://localhost:8080"
+> ```
+
 > **Important:** Without `--ingest`, files are written to disk only — nothing is sent to the
 > database. Always include `--ingest=<url>` when you want data in the DB.
 > `--ingest` only POSTs the files created in the **current run** — files from previous runs
