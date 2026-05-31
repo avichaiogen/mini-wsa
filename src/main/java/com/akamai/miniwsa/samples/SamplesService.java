@@ -10,7 +10,6 @@ import com.akamai.miniwsa.samples.dto.SamplesResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +32,7 @@ public class SamplesService {
                                       int limit, int offset) {
         int effectiveLimit  = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int effectiveOffset = Math.max(offset, 0);
-        var pageable = PageRequest.of(effectiveOffset / effectiveLimit, effectiveLimit);
+        var pageable = new OffsetPageRequest(effectiveLimit, effectiveOffset);
 
         log.debug("Samples query: configId={}, from={}, to={}, category={}, action={}, limit={}, offset={}",
                 configId, from, to, category, action, effectiveLimit, effectiveOffset);

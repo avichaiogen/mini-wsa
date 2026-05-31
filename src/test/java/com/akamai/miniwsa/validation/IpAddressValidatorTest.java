@@ -31,4 +31,6 @@ class IpAddressValidatorTest {
     @Test void isValid_onlyThreeOctets_returnsFalse()   { assertThat(v.isValid("192.168.1",       null)).isFalse(); }
     @Test void isValid_hostname_returnsFalse()           { assertThat(v.isValid("example.com",     null)).isFalse(); }
     @Test void isValid_randomText_returnsFalse()         { assertThat(v.isValid("not-an-ip",       null)).isFalse(); }
+    // Hostnames that happen to contain ':' (e.g., host:port) must not be accepted via DNS resolution
+    @Test void isValid_hostColonPort_returnsFalse()      { assertThat(v.isValid("example.com:80",  null)).isFalse(); }
 }

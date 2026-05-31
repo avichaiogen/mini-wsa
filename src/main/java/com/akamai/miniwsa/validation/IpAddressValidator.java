@@ -17,6 +17,9 @@ public class IpAddressValidator implements ConstraintValidator<ValidIpAddress, S
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (value == null || value.isBlank()) return true; // @NotBlank handles this
         if (IPV4.matcher(value).matches()) return true;
+        // Guard against DNS resolution: all IPv6 addresses contain ':', hostnames never do.
+        // Without this check, InetAddress.getByName() would accept any hostname that resolves to IPv6.
+        if (!value.contains(":")) return false;
         try {
             return InetAddress.getByName(value) instanceof Inet6Address;
         } catch (Exception e) {

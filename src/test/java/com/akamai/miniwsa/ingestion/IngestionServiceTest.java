@@ -130,6 +130,21 @@ class IngestionServiceTest {
         assertThat(saved.getResponseSize()).isEqualTo(req.getResponseSize());
     }
 
+    @Test
+    void ingest_lowercaseMethod_isNormalizedToUpperCase() {
+        when(attackClassifier.classify(any())).thenReturn("SQL/Command Injection");
+        when(repository.countByClientIpAndReceivedAtGreaterThanEqual(anyString(), any(Instant.class))).thenReturn(0L);
+        when(threatScoreEngine.compute(any(), anyLong())).thenReturn(60);
+        EventRequest req = buildRequest();
+        req.setMethod("post");
+
+        service.ingest(List.of(req));
+
+        ArgumentCaptor<List<SecurityEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(repository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getMethod()).isEqualTo("POST");
+    }
+
     // --- Unhappy path ---
 
     @Test

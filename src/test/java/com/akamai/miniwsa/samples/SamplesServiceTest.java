@@ -146,7 +146,22 @@ class SamplesServiceTest {
         samplesService.getSamples(null, null, null, null, null, 20, -5);
 
         verify(repository).findSamples(any(), any(), any(), any(), any(), pageableCaptor.capture());
-        assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(0);
+        assertThat(pageableCaptor.getValue().getOffset()).isEqualTo(0L);
+    }
+
+    @Test
+    void getSamples_nonMultipleOffset_isPreserved() {
+        when(repository.countSamples(any(), any(), any(), any(), any())).thenReturn(0L);
+        when(repository.findSamples(any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+        samplesService.getSamples(null, null, null, null, null, 20, 15);
+
+        verify(repository).findSamples(any(), any(), any(), any(), any(), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getOffset()).isEqualTo(15L);
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
     }
 
     @Test

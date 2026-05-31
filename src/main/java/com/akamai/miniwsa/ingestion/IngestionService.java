@@ -75,7 +75,7 @@ public class IngestionService {
         event.setClientIp(req.getClientIp());
         event.setHostname(req.getHostname());
         event.setPath(req.getPath());
-        event.setMethod(req.getMethod());
+        event.setMethod(req.getMethod().toUpperCase());
         event.setStatusCode(req.getStatusCode());
         event.setUserAgent(req.getUserAgent());
 
