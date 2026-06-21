@@ -24,6 +24,36 @@ Akamai's Web Security Analytics platform.
 
 ## Build & Run
 
+### Docker (Quick Start)
+
+With Docker installed, run:
+```bash
+docker compose up --build
+```
+
+The app starts on `http://localhost:8080` — no Java, Maven, or PostgreSQL installation needed.
+
+| Command | What it does |
+|---|---|
+| `docker compose up --build` | Build and start app + PostgreSQL |
+| `docker compose up --build -d` | Same, but in background |
+| `docker compose down` | Stop containers (data persists) |
+| `docker compose down -v` | Stop and delete all data |
+
+To seed data after startup:
+```bash
+mvn exec:java -Dexec.args="--count=1000 --ingest=http://localhost:8080"
+```
+
+To override database credentials:
+```bash
+DB_USERNAME=myuser DB_PASSWORD=mypass docker compose up --build
+```
+
+---
+
+### Manual Setup
+
 ### What you need
 - Git
 - [Java 21+](#java-21-jdk)
@@ -469,7 +499,6 @@ POST /v1/events/ingest
 ## What I Would Improve With More Time
 
 - **Authentication & authorisation** — the ingest endpoint currently accepts events from any caller with no identity verification. In production, `POST /v1/events/ingest` should require an API key or JWT so only trusted sources can write data, and the read endpoints (`GET /v1/stats/summary`, `GET /v1/events/samples`) should be role-scoped to prevent unauthorised access to analytics data.
-- **`docker-compose.yml`** — a compose file bundling the app and PostgreSQL would reduce setup from a multi-step manual process to a single `docker compose up`, making it easier to run locally and in CI.
 
 ---
 

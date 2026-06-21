@@ -13,3 +13,6 @@
 !src/**/*.xml
 !src/**/*.yml
 !src/**/*.sql
+!Dockerfile
+!docker-compose.yml
+!.dockerignore

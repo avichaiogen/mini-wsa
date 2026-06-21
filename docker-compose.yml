@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-miniwsa}
+      POSTGRES_USER: ${DB_USERNAME:-miniwsa}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-miniwsa}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-miniwsa} -d ${DB_NAME:-miniwsa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-miniwsa}
+      DB_USERNAME: ${DB_USERNAME:-miniwsa}
+      DB_PASSWORD: ${DB_PASSWORD:-miniwsa}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
